@@ -23,32 +23,36 @@ def p_def_list(p):
     p[0] = res
 
 def p_def_enum(p):
-    '''def : ENUM ID LBRACE term_list RBRACE
-           | ENUM ID LBRACE term_list COMMA RBRACE'''
+    '''def : ENUM ID LBRACE id_list RBRACE
+           | ENUM ID LBRACE id_list COMMA RBRACE'''
     p[0] = ast.Enum(p[2], p[4])
 
-def p_def_type_alias(p):
-    '''def : TYPE ID EQ type'''
-    p[0] = ast.TypeAlias(p[2], p[4])
-
-def p_type(p):
-    '''type : ID'''
-    p[0] = p[1]
-
-def p_type_tuple(p):
-    '''type : LPAREN type_list RPAREN
-            | LPAREN type_list COMMA RPAREN
-    '''
-    p[0] = p[2]
-
-def p_term_list(p):
-    '''term_list : ID
-                 | ID COMMA term_list
+def p_id_list(p):
+    '''id_list : ID
+               | ID COMMA id_list
     '''
     res = [p[1]]
     if len(p) > 3:
         res += p[3]
     p[0] = tuple(res)
+
+def p_def_type_alias(p):
+    '''def : TYPE ID EQ type'''
+    p[0] = ast.TypeAlias(p[2], p[4])
+
+def p_type_simple(p):
+    '''type : ID'''
+    p[0] = p[1]
+
+def p_type_tuple(p):
+    '''type : LPAREN RPAREN
+            | LPAREN type_list RPAREN
+            | LPAREN type_list COMMA RPAREN
+    '''
+    if len(p) > 3:
+        p[0] = p[2]
+    else:
+        p[0] = ()
 
 def p_type_list(p):
     '''type_list : type
@@ -82,7 +86,7 @@ def p_def_fn(p):
     else:
         p[0] = ast.Func(p[2], p[4], None, p[7])
 
-def p_expr_term(p):
+def p_expr_simple(p):
     '''expr : ID'''
     p[0] = p[1]
 
