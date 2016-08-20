@@ -1,3 +1,10 @@
+# emacs specific
+*~
+
+# ply specific
+parser.out
+parsetab.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
