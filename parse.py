@@ -13,28 +13,35 @@ def p_error(t):
     line = lines[t.lineno - 1]
     logger.error('Syntax error in line %s: unexpected token: %s\n%s', t.lineno, t, line)
 
+def _process_list(p, sep=1):
+    if len(p) == 1:
+        p[0] = []
+    elif len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[0] = p[1] + [p[2+sep]]
+
 def p_def_list(p):
     '''def_list : def
-                | def def_list
+                | def_list def
     '''
-    res = [p[1]]
-    if len(p) > 2:
-        res += p[2]
-    p[0] = res
+    _process_list(p, sep=0)
+
+def p_optional_comma(p):
+    '''optional_comma :
+                      | COMMA
+    '''
+    pass
 
 def p_def_enum(p):
-    '''def : ENUM ID LBRACE id_list RBRACE
-           | ENUM ID LBRACE id_list COMMA RBRACE'''
+    '''def : ENUM ID LBRACE id_list optional_comma RBRACE'''
     p[0] = ast.Enum(p[2], p[4])
 
 def p_id_list(p):
     '''id_list : ID
-               | ID COMMA id_list
+               | id_list COMMA ID
     '''
-    res = [p[1]]
-    if len(p) > 3:
-        res += p[3]
-    p[0] = tuple(res)
+    _process_list(p)
 
 def p_def_type_alias(p):
     '''def : TYPE ID EQ type'''
@@ -46,8 +53,7 @@ def p_type_simple(p):
 
 def p_type_tuple(p):
     '''type : LPAREN RPAREN
-            | LPAREN type_list RPAREN
-            | LPAREN type_list COMMA RPAREN
+            | LPAREN type_list optional_comma RPAREN
     '''
     if len(p) > 3:
         p[0] = p[2]
@@ -56,12 +62,9 @@ def p_type_tuple(p):
 
 def p_type_list(p):
     '''type_list : type
-                 | type COMMA type_list
+                 | type_list COMMA type
     '''
-    res = [p[1]]
-    if len(p) > 3:
-        res += p[3]
-    p[0] = tuple(res)
+    _process_list(p)
 
 def p_def_var(p):
     '''def : LET ID EQ expr
@@ -79,8 +82,8 @@ def p_def_var_typed(p):
 
     
 def p_def_fn(p):
-    '''def : FN ID LPAREN arg_list RPAREN LBRACE statement_list RBRACE
-           | FN ID LPAREN arg_list RPAREN ARROW type LBRACE statement_list RBRACE'''
+    '''def : FN ID LPAREN arg_def_list RPAREN LBRACE statement_list RBRACE
+           | FN ID LPAREN arg_def_list RPAREN ARROW type LBRACE statement_list RBRACE'''
     if len(p) >= 11:
         p[0] = ast.Func(p[2], p[4], p[7], p[9])
     else:
@@ -91,36 +94,30 @@ def p_expr_simple(p):
     p[0] = p[1]
 
 def p_expr_call(p):
-    '''expr : expr LPAREN expr_list RPAREN
-            | expr LPAREN expr_list COMMA RPAREN'''
+    '''expr : expr LPAREN expr_list optional_comma RPAREN'''
     p[0] = ast.Call(p[1], p[3])
 
 def p_expr_list(p):
     '''expr_list : expr
-                 | expr COMMA expr_list
+                 | expr_list COMMA expr
     '''
-    res = [p[1]]
-    if len(p) > 3:
-        res += p[3]
-    p[0] = tuple(res)
+    _process_list(p)
 
-def p_arg_list(p):
-    '''arg_list :
-                | ID COLON type
-                | ID COLON type COMMA arg_list
+def p_arg_def(p):
+    '''arg_def : ID COLON type'''
+    p[0] = ast.Arg(p[1], p[3])
+
+def p_arg_def_list(p):
+    '''arg_def_list :
+                    | arg_def
+                    | arg_def_list COMMA arg_def
     '''
-    p[0] = []
-    if len(p) > 1:
-        p[0].append(ast.Arg(p[1], p[3]))
-    if len(p) > 5:
-        p[0] += p[5]
+    _process_list(p)
 
 def p_statement_list(p):
     '''statement_list : statement
-                      | statement statement_list'''
-    p[0] = [p[1]]
-    if len(p) > 2:
-        p[0] += p[2]
+                      | statement_list statement'''
+    _process_list(p, sep=0)
 
 def p_statement(p):
     '''statement : expr

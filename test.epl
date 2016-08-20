@@ -13,7 +13,7 @@ type Test = (Bool, Bool)
 let onevar = one
 var twovar : Nat = two
 
-fn first(a: Nat, b: Nat) {
+fn first(a: Nat, b: Nat) -> Nat {
    a
 }
 fn get_one() {
