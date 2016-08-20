@@ -1,6 +1,6 @@
 from collections import namedtuple
 import ast
-import parser
+import parse
 
 class SemanticError(Exception):
     def __init__(self, error):
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     import sys
     for path in sys.argv[1:]:
         content = open(path).read()
-        defs = parser.parse(content)
+        defs = parse.parse(content)
         p = Program()
         for d in defs:
             p.add(d)
