@@ -1,0 +1,25 @@
+enum Nat {
+     1,
+     2,
+     3
+}
+enum Bool {
+     true,
+     false
+}
+type T = Bool
+type Test = (Bool, Bool)
+
+let one = 1
+var two : Nat = 2
+
+fn first(a: Nat, b: Nat) {
+   a
+}
+fn get_one() {
+   1
+}
+fn main() -> Nat {
+  let a = first(1, 2)
+  1
+}
