@@ -1,25 +1,25 @@
 enum Nat {
-     1,
-     2,
-     3
+     one,
+     two,
+     three,
 }
 enum Bool {
      true,
-     false
+     false,
 }
 type T = Bool
 type Test = (Bool, Bool)
 
-let one = 1
-var two : Nat = 2
+let onevar = one
+var twovar : Nat = two
 
 fn first(a: Nat, b: Nat) {
    a
 }
 fn get_one() {
-   1
+   one
 }
 fn main() -> Nat {
-  let a = first(1, 2)
-  1
+  let a = first(one, two)
+  three
 }

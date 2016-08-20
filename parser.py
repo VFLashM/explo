@@ -4,13 +4,14 @@ import ast
 import lexer
 import logging
 
+logger = logging.getLogger('parser')
 tokens = lexer.tokens
 start = 'def_list'
 
 def p_error(t):
-    print 'Syntax error in line %s: unexpected token: %s' % (t.lineno, t)
     lines = t.lexer.lexdata.splitlines()
-    print lines[t.lineno - 1]
+    line = lines[t.lineno - 1]
+    logger.error('Syntax error in line %s: unexpected token: %s\n%s', t.lineno, t, line)
 
 def p_def_list(p):
     '''def_list : def
@@ -22,16 +23,16 @@ def p_def_list(p):
     p[0] = res
 
 def p_def_enum(p):
-    '''def : ENUM TYPE LBRACE term_list RBRACE
-           | ENUM TYPE LBRACE term_list COMMA RBRACE'''
+    '''def : ENUM ID LBRACE term_list RBRACE
+           | ENUM ID LBRACE term_list COMMA RBRACE'''
     p[0] = ast.Enum(p[2], p[4])
 
 def p_def_type_alias(p):
-    '''def : TYPEKW TYPE EQ type'''
+    '''def : TYPE ID EQ type'''
     p[0] = ast.TypeAlias(p[2], p[4])
 
 def p_type(p):
-    '''type : TYPE'''
+    '''type : ID'''
     p[0] = p[1]
 
 def p_type_tuple(p):
@@ -41,8 +42,8 @@ def p_type_tuple(p):
     p[0] = p[2]
 
 def p_term_list(p):
-    '''term_list : TERM
-                 | TERM COMMA term_list
+    '''term_list : ID
+                 | ID COMMA term_list
     '''
     res = [p[1]]
     if len(p) > 3:
@@ -59,30 +60,30 @@ def p_type_list(p):
     p[0] = tuple(res)
 
 def p_def_var(p):
-    '''def : LET TERM EQ expr
-           | VAR TERM EQ expr
+    '''def : LET ID EQ expr
+           | VAR ID EQ expr
     '''
     readonly = p[1] == 'let'
     p[0] = ast.Var(p[2], None, readonly, p[4])
 
 def p_def_var_typed(p):
-    '''def : LET TERM COLON type EQ expr
-           | VAR TERM COLON type EQ expr
+    '''def : LET ID COLON type EQ expr
+           | VAR ID COLON type EQ expr
     '''
     readonly = p[1] == 'let'
     p[0] = ast.Var(p[2], p[4], readonly, p[6])
 
     
 def p_def_fn(p):
-    '''def : FN TERM LPAREN arg_list RPAREN LBRACE statement_list RBRACE
-           | FN TERM LPAREN arg_list RPAREN ARROW type LBRACE statement_list RBRACE'''
+    '''def : FN ID LPAREN arg_list RPAREN LBRACE statement_list RBRACE
+           | FN ID LPAREN arg_list RPAREN ARROW type LBRACE statement_list RBRACE'''
     if len(p) >= 11:
         p[0] = ast.Func(p[2], p[4], p[7], p[9])
     else:
         p[0] = ast.Func(p[2], p[4], None, p[7])
 
 def p_expr_term(p):
-    '''expr : TERM'''
+    '''expr : ID'''
     p[0] = p[1]
 
 def p_expr_call(p):
@@ -101,8 +102,8 @@ def p_expr_list(p):
 
 def p_arg_list(p):
     '''arg_list :
-                | TERM COLON type
-                | TERM COLON type COMMA arg_list
+                | ID COLON type
+                | ID COLON type COMMA arg_list
     '''
     p[0] = []
     if len(p) > 1:
@@ -128,6 +129,7 @@ def parse(content, debug=False):
     return parser.parse(content, lexer=lex, debug=debug)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     import sys
     for path in sys.argv[1:]:
         content = open(path).read()

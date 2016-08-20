@@ -3,16 +3,15 @@ import ply.lex as lex
 
 logger = logging.getLogger('lexer')
 
-keywords = {
-    'enum' : 'ENUM',
-    'type' : 'TYPEKW',
-    'fn' : 'FN',
-    'let' : 'LET',
-    'var' : 'VAR',
-    }
+keywords = (
+    'enum',
+    'type',
+    'fn',
+    'let',
+    'var',
+    )
 tokens = (
-    'TERM',
-    'TYPE',
+    'ID',
     'LPAREN',
     'RPAREN',
     'LBRACE',
@@ -23,9 +22,8 @@ tokens = (
     'COLON',
     'EQ',
     'ARROW',
-    ) + tuple(keywords.values())
+    ) + tuple(k.upper() for k in keywords)
 
-t_TYPE = r'[A-Z][a-zA-Z_]*'
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 t_LBRACE = r'\{'
@@ -38,17 +36,18 @@ t_EQ = r'='
 t_ARROW = '->'
 t_ignore = '\t '
 
-def t_TERM(t):
-    r'[a-z0-9][a-zA-Z_]*'
+def t_ID(t):
+    r'[a-zA-Z][a-zA-Z_]*'
     if t.value in keywords:
-        t.type = keywords[t.value]
+        t.type = t.value.upper()
     return t
 
 def t_error(t):
-    print 'Lexer error in line %s: unexpected symbol: %r' % (t.lineno, t.value[0])
     lines = t.lexer.lexdata.splitlines()
-    print lines[t.lineno - 1]
+    line = lines[t.lineno - 1]
+    logger.error('Lexer error in line %s: unexpected symbol: %r\n%s', t.lineno, t.value[0], line)
     t.lexer.skip(1)
+    t.lexer.errors.append(t)
 
 def t_comment(t):
     r'(/\*(.|\n)*?\*/)|(//.*)'
@@ -59,7 +58,9 @@ def t_newline(t):
     t.lexer.lineno += len(t.value)
 
 def lexer():
-    return lex.lex()
+    res = lex.lex()
+    res.errors = []
+    return res
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -67,13 +68,23 @@ if __name__ == '__main__':
     
     for path in sys.argv[1:]:
         content = open(path).read()
-        lexer = lex.lex()
-        lexer.input(content)
+        
+        l = lexer()
+        l.input(content)
+        while True:
+            tok = l.token()
+            if not tok:
+                sys.stdout.write('\n')
+                break
+        if l.errors:
+            continue
 
+        l = lexer()
+        l.input(content)
         lines = content.splitlines()
         last_line = None
         while True:
-            tok = lexer.token()
+            tok = l.token()
             if not tok:
                 sys.stdout.write('\n')
                 break
