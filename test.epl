@@ -22,5 +22,6 @@ fn get_one() {
 fn main() -> Nat {
   let a = first(one, two)
   twovar = a
+  print(twovar)
   twovar
 }

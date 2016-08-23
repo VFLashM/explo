@@ -48,12 +48,10 @@ def execute(node, state):
             state[node.var.name] = execute(node.value, state)
     elif isinstance(node, Enum):
         pass
-    elif isinstance(node, Value):
+    elif isinstance(node, (Value, Function, BuiltinFunction)):
         return node
     elif isinstance(node, Var):
         return state[node.name]
-    elif isinstance(node, Function):
-        return node
     elif isinstance(node, Assignment):
         state[node.var.name] = execute(node.value, state)
     elif isinstance(node, Call):
@@ -101,6 +99,8 @@ class Block(object):
         assert isinstance(func, Function)
         assert not func.args
         return func.body.execute(state)
+
+BuiltinFunction = namedtuple('BuiltinFunction', ['name', 'args', 'return_type', 'body', 'type'])
         
 class Function(object):
     def __init__(self, node, context):
@@ -193,7 +193,6 @@ class Namespace(object):
                 return self._names[t]
         else:
             assert False, 'Unexpected type type: %r' % (t,)
-                
 
     def _add_def(self, d):
         if d.name in self._names:
@@ -245,15 +244,29 @@ class Namespace(object):
     def __str__(self):
         return '\n'.join(map(str, self._names.values()))
 
+class PrintBuiltin(object):
+    def execute(self, state):
+        print 'PRINT', state['arg'].value
+
+def builtins():
+    n = Namespace()
+    f = BuiltinFunction('print', [VarDef(Var('arg', None), None)], None, PrintBuiltin(), FuncType([None], None))
+    n._funs[f.name] = f
+    n._names[f.name] = f
+    return n
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     import sys
     for path in sys.argv[1:]:
         content = open(path).read()
         defs = parse.parse(content)
-        p = Block(defs, None)
+        p = Block(defs, builtins())
         print p
         state = State()
         p.execute(state)
         res = p.call(state, 'main')
-        print 'result:', res
+        if res is not None:
+            res = res.value
+            assert isinstance(res, (long, int)), 'RC: %r' % (res,)
+            sys.exit(res)
