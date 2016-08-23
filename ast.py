@@ -2,6 +2,9 @@ from collections import namedtuple
 
 class Node(object):
     srcmap = None
+
+class Type(Node):
+    pass
     
 class Expression(Node):
     pass
@@ -26,7 +29,7 @@ class TypeAlias(Definition):
         return 'TypeAlias(%s = %s)' % (self.name, self.target)
 
 class Var(Definition):
-    def __init__(self, name, type, readonly, value=None):
+    def __init__(self, name, type, readonly=True, value=None):
         self.name = name
         self.type = type
         self.readonly = readonly
@@ -80,3 +83,18 @@ class Term(Expression):
 
     def __str__(self):
         return 'Term(%s)' % self.name
+
+class SimpleType(Type):
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return 'Type(%s)' % self.name
+
+class Tuple(Type):
+    def __init__(self, members):
+        self.members = members
+
+    def __str__(self):
+        return 'Tuple(%s)' % ', '.join(map(str, self.members))
+

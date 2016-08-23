@@ -71,16 +71,17 @@ def p_def_type_alias(p):
 
 def p_type_simple(p):
     '''type : ID'''
-    p[0] = p[1]
+    p[0] = ast.SimpleType(p[1])
+    add_srcmap(p, 1)
 
 def p_type_tuple(p):
     '''type : LPAREN RPAREN
             | LPAREN type_list optional_comma RPAREN
     '''
     if len(p) > 3:
-        p[0] = p[2]
+        p[0] = ast.Tuple(p[2])
     else:
-        p[0] = ()
+        p[0] = ast.Tuple([])
 
 def p_type_list(p):
     '''type_list : type
