@@ -1,4 +1,4 @@
-import re
+import functools
 import ply.yacc as yacc
 import ast
 import lexer
@@ -11,6 +11,16 @@ class ParserError(SyntaxError):
 logger = logging.getLogger('parser')
 tokens = lexer.tokens
 start = 'def_list'
+
+def add_srcmap(p, idx):
+    if isinstance(p[idx], ast.Node):
+        assert p[idx].srcmap is not None
+        p[0].srcmap = p[idx].srcmap
+    else:
+        ln = p.lineno(idx)
+        lp = p.lexpos(idx)
+        assert ln is not None and lp is not None
+        p[0].srcmap = ln, lp
 
 def p_error(t):
     if t is None:
@@ -45,6 +55,7 @@ def p_optional_comma(p):
 def p_def_enum(p):
     '''def : ENUM ID LBRACE id_list optional_comma RBRACE'''
     p[0] = ast.Enum(p[2], p[4])
+    add_srcmap(p, 2)
 
 def p_id_list(p):
     '''id_list :
@@ -56,6 +67,7 @@ def p_id_list(p):
 def p_def_type_alias(p):
     '''def : TYPE ID EQ type'''
     p[0] = ast.TypeAlias(p[2], p[4])
+    add_srcmap(p, 2)
 
 def p_type_simple(p):
     '''type : ID'''
@@ -82,6 +94,7 @@ def p_def_var(p):
     '''
     readonly = p[1] == 'let'
     p[0] = ast.Var(p[2], None, readonly, p[4])
+    add_srcmap(p, 2)
 
 def p_def_var_typed(p):
     '''def : LET ID COLON type
@@ -95,6 +108,7 @@ def p_def_var_typed(p):
     else:
         value = None
     p[0] = ast.Var(p[2], p[4], readonly, value)
+    add_srcmap(p, 2)
 
     
 def p_def_fn(p):
@@ -104,14 +118,17 @@ def p_def_fn(p):
         p[0] = ast.Func(p[2], p[4], p[7], p[9])
     else:
         p[0] = ast.Func(p[2], p[4], None, p[7])
+    add_srcmap(p, 2)
 
 def p_expr_simple(p):
     '''expr : ID'''
     p[0] = ast.Term(p[1])
+    add_srcmap(p, 1)
 
 def p_expr_call(p):
     '''expr : expr LPAREN expr_list optional_comma RPAREN'''
     p[0] = ast.Call(p[1], p[3])
+    add_srcmap(p, 1)
 
 def p_expr_list(p):
     '''expr_list : expr
@@ -122,6 +139,7 @@ def p_expr_list(p):
 def p_arg_def(p):
     '''arg_def : ID COLON type'''
     p[0] = ast.Var(p[1], p[3], True)
+    add_srcmap(p, 1)
 
 def p_arg_def_list(p):
     '''arg_def_list :
@@ -142,6 +160,7 @@ def p_statement(p):
                  | ID EQ expr'''
     if len(p) > 2:
         p[0] = ast.Assignment(p[1], p[3])
+        add_srcmap(p, 1)
     else:
         p[0] = p[1]
 
