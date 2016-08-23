@@ -1,7 +1,7 @@
+import sys
 import os
 import logging
 import model
-import parser
 from error import SyntaxError
 
 logger = logging.getLogger('test')
@@ -53,6 +53,7 @@ def check(path):
                 raise WrongFailure('Wrong error on line: %s: %s' % (test_line, e))
             
 def check_all(root):
+    success = True
     for name in os.listdir(root):
         if not name.endswith('.epl'):
             continue
@@ -63,6 +64,9 @@ def check_all(root):
             logger.info('SUCCESS: %s', path)
         except TestFailure as e:
             logger.info('FAILURE: %s %s %s', path, type(e), e)
+            success = False
+    return success
 
 logging.basicConfig(level=logging.DEBUG)
-check_all(os.path.dirname(__file__))
+if not check_all(os.path.dirname(__file__)):
+    sys.exit(1)
