@@ -1,0 +1,9 @@
+enum Name {
+     some,
+     mutually,
+     exclusive,
+     options,
+}
+enum NoTrail { one, two }
+enum Void {}
+enum Name { bad } //<error already defined

@@ -1,0 +1,21 @@
+enum Bool { true, false }
+enum Void {}
+
+fn truefn() -> Bool { true }
+
+fn first(a: Bool, b: Bool) {
+   a
+}
+fn second(a: Bool, b: Bool) {
+   first(b, a)
+}
+fn assign(a: Bool) -> Bool {
+   var b: Bool = true
+   b = a
+   b
+}
+
+fn mismatch1() -> Void { true } //<error type mismatch
+fn mismatch2() -> Bool {} //<error type mismatch
+fn mismatch3() -> Bool { var a: Bool a = true } //<error type mismatch
+fn undefined() { unknown(true) }  //<error undefined

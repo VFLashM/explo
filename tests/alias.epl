@@ -1,0 +1,5 @@
+enum Test { value }
+type Alias = Test
+type TupleAlias = (Test, Test)
+type Bad = Undefined //<error undefined
+type Alias = (Test, Test) //<error already defined

@@ -1,0 +1,6 @@
+enum Test { value }
+enum Void {}
+let immutable: Test = value
+var mutable: Test
+let notype = value
+let incompatible: Void = value //<error type mismatch
