@@ -1,5 +1,6 @@
 enum Bool { true, false }
 enum Void {}
+enum Nat { one, two, three }
 
 fn truefn() -> Bool { true }
 
@@ -18,4 +19,5 @@ fn assign(a: Bool) -> Bool {
 fn mismatch1() -> Void { true } //<error type mismatch
 fn mismatch2() -> Bool {} //<error type mismatch
 fn mismatch3() -> Bool { var a: Bool a = true } //<error type mismatch
+fn mismatch4() { first(true, one) }  //<error type mismatch
 fn undefined() { unknown(true) }  //<error undefined
