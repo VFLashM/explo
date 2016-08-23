@@ -11,7 +11,7 @@ start = 'def_list'
 
 def p_error(t):
     if t is None:
-        logger.error('Syntax error: lexer is empty')
+        logger.error('unexpected end of file')
         return
     lines = t.lexer.lexdata.splitlines()
     line = lines[t.lineno - 1]
@@ -44,7 +44,8 @@ def p_def_enum(p):
     p[0] = ast.Enum(p[2], p[4])
 
 def p_id_list(p):
-    '''id_list : ID
+    '''id_list :
+               | ID
                | id_list COMMA ID
     '''
     _process_list(p)
@@ -80,11 +81,17 @@ def p_def_var(p):
     p[0] = ast.Var(p[2], None, readonly, p[4])
 
 def p_def_var_typed(p):
-    '''def : LET ID COLON type EQ expr
+    '''def : LET ID COLON type
+           | VAR ID COLON type
+           | LET ID COLON type EQ expr
            | VAR ID COLON type EQ expr
     '''
     readonly = p[1] == 'let'
-    p[0] = ast.Var(p[2], p[4], readonly, p[6])
+    if len(p) > 6:
+        value = p[6]
+    else:
+        value = None
+    p[0] = ast.Var(p[2], p[4], readonly, value)
 
     
 def p_def_fn(p):
@@ -121,7 +128,8 @@ def p_arg_def_list(p):
     _process_list(p)
 
 def p_statement_list(p):
-    '''statement_list : statement
+    '''statement_list :
+                      | statement
                       | statement_list statement'''
     _process_list(p, sep=0)
 
@@ -140,6 +148,8 @@ def parse(content, debug=False):
     res = parser.parse(content, lexer=lex, debug=debug)
     if res is None:
         errors = '\n'.join(lex.errors)
+        if not errors:
+            errors = 'unexpected end of file'
         raise ParserError(errors)
     return res
 

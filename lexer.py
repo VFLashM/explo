@@ -37,7 +37,7 @@ t_ARROW = '->'
 t_ignore = '\t '
 
 def t_ID(t):
-    r'[a-zA-Z][a-zA-Z_]*'
+    r'[a-zA-Z][a-zA-Z_0-9]*'
     if t.value in keywords:
         t.type = t.value.upper()
     return t
