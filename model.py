@@ -131,6 +131,9 @@ class Call(Expression):
             check_type_compatible(exp_type, got_arg.type, ast_node)
         self.type = self.callee.type.return_type
 
+    def __str__(self):
+        return 'Call(%s, %s)' % (self.callee.name, map(str, self.args))
+
 class Assignment(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
@@ -139,6 +142,9 @@ class Assignment(Expression):
             raise ModelError('Destination is not assignable: %s' % self.destination, ast_node)
         self.value = create_expression(ast_node.value, context)
         check_type_compatible(self.destination.type, self.value.type, ast_node)
+
+    def __str__(self):
+        return 'Assignment(%s = %s)' % (self.destination, self.value)
         
 def create_expression(ast_node, context):
     if isinstance(ast_node, ast.Term):
@@ -259,8 +265,11 @@ class Block(Context):
         if res is not None:
             self.statements.append(res)
 
+    def _indent(self, text):
+        return '\n'.join('\t' + line for line in text.splitlines())
+
     def __str__(self):
-        return 'Block {\n%s\n}' % '\n'.join('\t%s' % st for st in self.statements)
+        return 'Block {\n%s\n}' % '\n'.join(self._indent(str(st)) for st in self.statements)
 
 class BuiltinFunction(Function):
     def __init__(self, name, arg_types, return_type, context):
