@@ -3,7 +3,10 @@ import ply.yacc as yacc
 import ast
 import lexer
 import logging
-from error import ParserError
+from error import SyntaxError
+
+class ParserError(SyntaxError):
+    pass
 
 logger = logging.getLogger('parser')
 tokens = lexer.tokens
