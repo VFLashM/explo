@@ -50,6 +50,9 @@ def check_type_compatible(destination, source, ast_node):
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
+
+    def execute(self, state):
+        raise NotImplementedError(type(self))
         
 class Var(Node):
     def __init__(self, ast_node, context):
@@ -62,6 +65,9 @@ class Var(Node):
 
     def __str__(self):
         return 'Var(%s, %s)' % (self.name, self.type.name)
+
+    def execute(self, state):
+        return state[self.name]
 
 class VarDef(Node):
     def __init__(self, ast_node, context):
@@ -83,6 +89,13 @@ class VarDef(Node):
     def __str__(self):
         return 'VarDef(%s = %s)' % (self.var, self.value)
 
+    def execute(self, state):
+        if self.value:
+            value = self.value.execute(state)
+        state.add(self.var.name)
+        if self.value:
+            state[self.var.name] = value
+
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
@@ -101,6 +114,9 @@ class EnumValue(Expression):
     def __str__(self):
         return 'EnumValue(%s)' % self.name
 
+    def execute(self, state):
+        return self
+
 class Enum(Type):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
@@ -109,6 +125,9 @@ class Enum(Type):
 
     def __str__(self):
         return 'Enum(%s, %s)' % (self.name, [v.name for v in self.values])
+
+    def execute(self, state):
+        pass
 
 class FuncType(Type):
     def __init__(self, arg_types, return_type):
@@ -134,6 +153,11 @@ class Call(Expression):
     def __str__(self):
         return 'Call(%s, %s)' % (self.callee.name, map(str, self.args))
 
+    def execute(self, state):
+        callee = self.callee.execute(state)
+        args = [a.execute(state) for a in self.args]
+        return callee.call(state, args)
+
 class Assignment(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
@@ -145,6 +169,10 @@ class Assignment(Expression):
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
+
+    def execute(self, state):
+        value = self.value.execute(state)
+        state[self.destination.name] = value
         
 def create_expression(ast_node, context):
     if isinstance(ast_node, ast.Term):
@@ -178,6 +206,17 @@ class Function(Node):
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
+
+    def execute(self, state):
+        return self
+
+    def call(self, state, args):
+        fnstate = State(state)
+        for avardef, avalue in zip(self.args, args):
+            fnstate.add(avardef.var.name)
+            fnstate[avardef.var.name] = avalue
+        return self.body.execute(fnstate)
+        
 
 class Context(object):
     def __init__(self, parent):
@@ -271,6 +310,12 @@ class Block(Context):
     def __str__(self):
         return 'Block {\n%s\n}' % '\n'.join(self._indent(str(st)) for st in self.statements)
 
+    def execute(self, state):
+        res = None
+        for st in self.statements:
+            res = st.execute(state)
+        return res
+
 class BuiltinFunction(Function):
     def __init__(self, name, arg_types, return_type, context):
         arg_names = [chr(ord('a') + idx) for idx in range(len(arg_types))]
@@ -283,7 +328,10 @@ class BuiltinFunction(Function):
         ast_node = ast.Func(name, arg_ast_nodes, return_type, [])
         
         Function.__init__(self, ast_node, context)
-        self.body = self
+        self.body = None
+
+    def call(self, state, args):
+        raise NotImplementedError(type(self))
 
 class BuiltinType(Type):
     def __init__(self, name):
@@ -293,11 +341,39 @@ class PrintBuiltin(BuiltinFunction):
     def __init__(self, context):
         BuiltinFunction.__init__(self, 'print', ['Any'], None, context)
 
+    def call(self, state, args):
+        print args[0]
+
 class Builtins(Context):
     def __init__(self):
         Context.__init__(self, None)
         self.add_type(BuiltinType('Any'), None)
         self.add_term(PrintBuiltin(self), None)
+
+class State(object):
+    def __init__(self, parent=None):
+        self.parent = parent
+        self.values = {}
+
+    def add(self, name):
+        assert name not in self.values
+        self.values[name] = None
+
+    def __setitem__(self, key, value):
+        if key in self.values:
+            self.values[key] = value
+        elif self.parent:
+            self.parent[key] = value
+        else:
+            assert False
+
+    def __getitem__(self, key):
+        if key in self.values:
+            return self.values[key]
+        elif self.parent:
+            return self.parent[key]
+        else:
+            assert False
 
 def build(content):
     statements = parse.parse(content)
@@ -315,3 +391,8 @@ if __name__ == '__main__':
         content = open(path).read()
         p = build(content)
         print p
+        print
+        state = State()
+        p.execute(state)
+        main = p.resolve_term('main', None)
+        main.call(state, [])
