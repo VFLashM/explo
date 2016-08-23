@@ -121,8 +121,12 @@ def p_statement_list(p):
 
 def p_statement(p):
     '''statement : expr
-                 | def'''
-    p[0] = p[1]
+                 | def
+                 | ID EQ expr'''
+    if len(p) > 2:
+        p[0] = ast.Assignment(p[1], p[3])
+    else:
+        p[0] = p[1]
 
 def parse(content, debug=False):
     lex = lexer.lexer()

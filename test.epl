@@ -21,5 +21,6 @@ fn get_one() {
 }
 fn main() -> Nat {
   let a = first(one, two)
-  three
+  twovar = a
+  twovar
 }

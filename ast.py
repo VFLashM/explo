@@ -6,8 +6,9 @@ Var = namedtuple('Var', ['name', 'type', 'readonly', 'value'])
 Arg = namedtuple('ArgDef', ['name', 'type'])
 Func = namedtuple('Func', ['name', 'args', 'return_type', 'body'])
 Call = namedtuple('Call', ['fn', 'args'])
+Assignment = namedtuple('Assignment', ['name', 'value'])
 
-Expression = (Call)
+Expression = (Call, Assignment)
 Definition = (Enum, TypeAlias, Var, Func)
 
 def func_str(self):

@@ -11,20 +11,9 @@ class SemanticError(Exception):
     def __str__(self):
         return '%s\nwhile parsing %s' % (self.message, self.node)
 
-class Var(object):
-    def __init__(self, name, type, value=None):
-        self.name = name
-        self.type = type
-        self.value = value
-        assert name
-        assert type, 'Var %r does not have a type' % name
+Var = namedtuple('Var', ['name', 'type'])
+VarDef = namedtuple('VarDef', ['var', 'value'])
         
-    def __str__(self):
-        res = '%s: %s' % (self.name, self.type.name)
-        if self.value is not None:
-            res += ' = %s' % str(self.value)
-        return res
-
 Value = namedtuple('Value', ['type', 'value'])
 Value.__str__ = lambda self: '%s: %s' % (self.value, self.type.name)
 Call = namedtuple('Call', ['fn', 'args'])
@@ -38,6 +27,9 @@ Tuple = namedtuple('TupleBase', ['types'])
 Tuple.name = property(lambda self: '(%s)' % ', '.join(t.name for t in self.types))
 Tuple.__str__ = lambda self: 'Tuple%s' % self.name
 
+Assignment = namedtuple('Assignment', ['var', 'value'])
+Assignment.__str__ = lambda self: '%s = %s' % (self.var.name, self.value)
+
 def Expression(node, namespace):
     if isinstance(node, ast.Call):
         fn = Expression(node.fn, namespace)
@@ -48,6 +40,32 @@ def Expression(node, namespace):
     else:
         return namespace.resolve_term(node)
 
+def execute(node, state):
+    assert node
+    if isinstance(node, VarDef):
+        state.add(node.var.name, None)
+        if node.value:
+            state[node.var.name] = execute(node.value, state)
+    elif isinstance(node, Enum):
+        pass
+    elif isinstance(node, Value):
+        return node
+    elif isinstance(node, Var):
+        return state[node.name]
+    elif isinstance(node, Function):
+        return node
+    elif isinstance(node, Assignment):
+        state[node.var.name] = execute(node.value, state)
+    elif isinstance(node, Call):
+        fn = execute(node.fn, state)
+        args = [execute(a, state) for a in node.args]
+        fnstate = State(state)
+        for adef, aval in zip(fn.args, args):
+            fnstate.add(adef.var.name, aval)
+        return fn.body.execute(fnstate)
+    else:
+        raise NotImplementedError(repr(node))
+
 class Block(object):
     def __init__(self, nodes, context):
         self.namespace = Namespace(context)
@@ -56,8 +74,14 @@ class Block(object):
         for node in nodes:
             if isinstance(node, ast.Definition):
                 definition = self.namespace.add_def(node)
-                self.statements.append(definition)
+                if definition:
+                    self.statements.append(definition)
                 self.type = None
+            elif isinstance(node, ast.Assignment):
+                expr = Expression(node.value, self.namespace)
+                var = self.namespace.resolve_term(node.name)
+                assignment = Assignment(var, expr)
+                self.statements.append(assignment)
             else:
                 expr = Expression(node, self.namespace)
                 self.statements.append(expr)
@@ -65,6 +89,18 @@ class Block(object):
                 
     def __str__(self):
         return '{\n%s\n}' % '\n'.join('  %s' % str(s) for s in self.statements)
+
+    def execute(self, state):
+        res = None
+        for statement in self.statements:
+            res = execute(statement, state)
+        return res
+
+    def call(self, state, fn):
+        func = self.namespace.resolve_term(fn)
+        assert isinstance(func, Function)
+        assert not func.args
+        return func.body.execute(state)
         
 class Function(object):
     def __init__(self, node, context):
@@ -79,7 +115,7 @@ class Function(object):
         self.namespace = Namespace(context)
         for arg in node.args:
             argvar = self.namespace.add_var(arg.name, arg.type)
-            arg_types.append(argvar.type)
+            arg_types.append(argvar.var.type)
             self.args.append(argvar)
         self.body = Block(node.body, self.namespace)
 
@@ -94,6 +130,27 @@ class Function(object):
         if self.return_type:
             return_str = ' -> %s' % self.return_type.name
         return 'fn %s(%s)%s %s' % (self.name, ', '.join(map(str, self.args)), return_str, self.body)
+
+class State(object):
+    def __init__(self, parent=None):
+        self._parent = parent
+        self._values = {}
+
+    def add(self, key, value):
+        assert not key in self._values, 'duplicate: %s' % key
+        self._values[key] = value
+
+    def __getitem__(self, key):
+        if key in self._values:
+            return self._values[key]
+        else:
+            return self._parent[key]
+
+    def __setitem__(self, key, value):
+        if key in self._values:
+            self._values[key] = value
+        else:
+            self._parent[key] = value
 
 class Namespace(object):
     def __init__(self, parent=None):
@@ -172,10 +229,11 @@ class Namespace(object):
             type = value.type
             if type is None:
                 raise SemanticError('Cannot assign void value: %s' % str(value))
-        var = Var(name, type, value)
+        var = Var(name, type)
+        var_def = VarDef(var, value)
         self._names[name] = var
         self._vars[name] = var
-        return var
+        return var_def
 
     def add_def(self, d):
         try:
@@ -193,7 +251,9 @@ if __name__ == '__main__':
     for path in sys.argv[1:]:
         content = open(path).read()
         defs = parse.parse(content)
-        p = Namespace()
-        for d in defs:
-            p.add_def(d)
+        p = Block(defs, None)
         print p
+        state = State()
+        p.execute(state)
+        res = p.call(state, 'main')
+        print 'result:', res
