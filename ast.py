@@ -8,7 +8,7 @@ Func = namedtuple('Func', ['name', 'args', 'return_type', 'body'])
 Call = namedtuple('Call', ['fn', 'args'])
 Assignment = namedtuple('Assignment', ['name', 'value'])
 
-Expression = (Call, Assignment)
+Expression = (Call, Assignment, basestring)
 Definition = (Enum, TypeAlias, Var, Func)
 
 def func_str(self):
