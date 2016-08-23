@@ -33,10 +33,13 @@ Assignment.__str__ = lambda self: '%s = %s' % (self.var.name, self.value)
 
 def Expression(node, namespace):
     if isinstance(node, ast.Call):
-        fn = Expression(node.fn, namespace)
+        fn = Expression(node.callee, namespace)
         if type(fn.type) != FuncType:
             raise ModelError('Not a function: %s' % fn)
         args = [Expression(arg, namespace) for arg in node.args]
+        for fnarg, arg in zip(fn.args, args):
+            if fnarg.var.type != arg.type:
+                raise ModelError('Type mismatch')
         return Call(fn, args)
     else:
         return namespace.resolve_term(node)
@@ -78,7 +81,7 @@ class Block(object):
                 self.type = None
             elif isinstance(node, ast.Assignment):
                 expr = Expression(node.value, self.namespace)
-                var = self.namespace.resolve_term(node.name)
+                var = self.namespace.resolve_term(node.destination)
                 assignment = Assignment(var, expr)
                 self.statements.append(assignment)
             else:
@@ -162,6 +165,8 @@ class Namespace(object):
         self._names = {}
 
     def resolve_term(self, term):
+        if isinstance(term, ast.Term):
+            term = term.name
         if term in self._types:
             raise ModelError('"%s" is a type' % t)
         if term in self._names:
