@@ -3,15 +3,21 @@ import ply.yacc as yacc
 import ast
 import lexer
 import logging
+from error import ParserError
 
 logger = logging.getLogger('parser')
 tokens = lexer.tokens
 start = 'def_list'
 
 def p_error(t):
+    if t is None:
+        logger.error('Syntax error: lexer is empty')
+        return
     lines = t.lexer.lexdata.splitlines()
     line = lines[t.lineno - 1]
-    logger.error('Syntax error in line %s: unexpected token: %s\n%s', t.lineno, t, line)
+    error = 'Syntax error in line %s: unexpected token: %s\n%s' % (t.lineno, t, line)
+    t.lexer.errors.append(error)
+    logger.error(error)
 
 def _process_list(p, sep=1):
     if len(p) == 1:
@@ -131,7 +137,11 @@ def p_statement(p):
 def parse(content, debug=False):
     lex = lexer.lexer()
     parser = yacc.yacc()
-    return parser.parse(content, lexer=lex, debug=debug)
+    res = parser.parse(content, lexer=lex, debug=debug)
+    if res is None:
+        errors = '\n'.join(lex.errors)
+        raise ParserError(errors)
+    return res
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

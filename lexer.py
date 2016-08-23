@@ -45,9 +45,10 @@ def t_ID(t):
 def t_error(t):
     lines = t.lexer.lexdata.splitlines()
     line = lines[t.lineno - 1]
-    logger.error('Lexer error in line %s: unexpected symbol: %r\n%s', t.lineno, t.value[0], line)
+    error = 'Lexer error in line %s: unexpected symbol: %r\n%s' % (t.lineno, t.value[0], line)
+    t.lexer.errors.append(error)
+    logger.error(error)
     t.lexer.skip(1)
-    t.lexer.errors.append(t)
 
 def t_comment(t):
     r'(/\*(.|\n)*?\*/)|(//.*)'

@@ -2,8 +2,9 @@ import logging
 from collections import namedtuple
 import ast
 import parse
+from error import SyntaxError
 
-class SemanticError(Exception):
+class ModelError(SyntaxError):
     def __init__(self, error):
         Exception.__init__(self, error)
         self.node = None
@@ -34,7 +35,7 @@ def Expression(node, namespace):
     if isinstance(node, ast.Call):
         fn = Expression(node.fn, namespace)
         if type(fn.type) != FuncType:
-            raise SemanticError('Not a function: %s' % fn)
+            raise ModelError('Not a function: %s' % fn)
         args = [Expression(arg, namespace) for arg in node.args]
         return Call(fn, args)
     else:
@@ -121,7 +122,7 @@ class Function(object):
 
         if self.return_type is not None:
             if self.body.type != self.return_type:
-                raise SemanticError('Return type mismatch, expected %s, got %s' % (self.return_type, self.body.type))
+                raise ModelError('Return type mismatch, expected %s, got %s' % (self.return_type, self.body.type))
         
         self.type = FuncType(arg_types, self.return_type)
 
@@ -162,7 +163,7 @@ class Namespace(object):
 
     def resolve_term(self, term):
         if term in self._types:
-            raise SemanticError('"%s" is a type' % t)
+            raise ModelError('"%s" is a type' % t)
         if term in self._names:
             return self._names[term]
         else:
@@ -172,7 +173,7 @@ class Namespace(object):
                         return Value(t, term)
         if self._parent:
             return self._parent.resolve_term(term)
-        raise SemanticError('Undeclared term: "%s"' % term)
+        raise ModelError('Undeclared term: "%s"' % term)
 
     def resolve_type(self, t):
         if isinstance(t, list):
@@ -188,7 +189,7 @@ class Namespace(object):
                 if self._parent:
                     return self._parent.resolve_type(t)
                 else:
-                    raise SemanticError('undefined type: %s' % t)
+                    raise ModelError('undefined type: %s' % t)
             else:
                 return self._names[t]
         else:
@@ -196,7 +197,7 @@ class Namespace(object):
 
     def _add_def(self, d):
         if d.name in self._names:
-            raise SemanticError('name already defined: %s' % d.name)
+            raise ModelError('name already defined: %s' % d.name)
         if type(d) == ast.Enum:
             enum = Enum(d.name, d.values)
             self._types[d.name] = enum 
@@ -221,13 +222,13 @@ class Namespace(object):
         if type is not None:
             type = self.resolve_type(type)
         if value is not None and type is not None and type != value.type:
-            raise SemanticError('Type mismatch: expected %s, got %s' % (type, value.type))
+            raise ModelError('Type mismatch: expected %s, got %s' % (type, value.type))
         if type is None and value is None:
-            raise SemanticError('Unable to determine type')
+            raise ModelError('Unable to determine type')
         if type is None:
             type = value.type
             if type is None:
-                raise SemanticError('Cannot assign void value: %s' % str(value))
+                raise ModelError('Cannot assign void value: %s' % str(value))
         var = Var(name, type)
         var_def = VarDef(var, value)
         self._names[name] = var
@@ -237,7 +238,7 @@ class Namespace(object):
     def add_def(self, d):
         try:
             return self._add_def(d)
-        except SemanticError as e:
+        except ModelError as e:
             e.node = d
             raise
 
@@ -254,6 +255,11 @@ def builtins():
     n._funs[f.name] = f
     n._names[f.name] = f
     return n
+
+def build(content):
+    defs = parse.parse(content)
+    assert defs is not None, 'Parser returned none'
+    return Block(defs, builtins())
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
