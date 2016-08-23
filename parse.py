@@ -107,7 +107,7 @@ def p_def_fn(p):
 
 def p_expr_simple(p):
     '''expr : ID'''
-    p[0] = p[1]
+    p[0] = ast.Term(p[1])
 
 def p_expr_call(p):
     '''expr : expr LPAREN expr_list optional_comma RPAREN'''
@@ -121,7 +121,7 @@ def p_expr_list(p):
 
 def p_arg_def(p):
     '''arg_def : ID COLON type'''
-    p[0] = ast.Arg(p[1], p[3])
+    p[0] = ast.Var(p[1], p[3], True)
 
 def p_arg_def_list(p):
     '''arg_def_list :
