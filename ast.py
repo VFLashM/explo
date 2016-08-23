@@ -3,7 +3,7 @@ from collections import namedtuple
 Enum = namedtuple('Enum', ['name', 'values'])
 TypeAlias = namedtuple('TypeAlias', ['name', 'target'])
 Var = namedtuple('Var', ['name', 'type', 'readonly', 'value'])
-Arg = namedtuple('ArgDef', ['name', 'type'])
+Arg = namedtuple('Arg', ['name', 'type'])
 Func = namedtuple('Func', ['name', 'args', 'return_type', 'body'])
 Call = namedtuple('Call', ['fn', 'args'])
 Assignment = namedtuple('Assignment', ['name', 'value'])
