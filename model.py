@@ -42,6 +42,8 @@ class KindMismatch(ModelError):
 
         
 def check_type_compatible(destination, source, ast_node):
+    if type(destination) == BuiltinType and destination.name == 'Any':
+        return
     if destination != source:
         raise TypeMismatch(destination, source, ast_node)
 
@@ -264,8 +266,8 @@ class BuiltinFunction(Function):
     def __init__(self, name, arg_types, return_type, context):
         arg_names = [chr(ord('a') + idx) for idx in range(len(arg_types))]
         arg_ast_nodes = []
-        for name, type_name in zip(arg_names, arg_types):
-            arg_ast_node = ast.Var(name, ast.SimpleType(type_name))
+        for arg_name, type_name in zip(arg_names, arg_types):
+            arg_ast_node = ast.Var(arg_name, ast.SimpleType(type_name))
             arg_ast_nodes.append(arg_ast_node)
         if return_type:
             return_type = ast.SimpleType(return_type)
@@ -280,12 +282,12 @@ class BuiltinType(Type):
 
 class PrintBuiltin(BuiltinFunction):
     def __init__(self, context):
-        BuiltinFunction.__init__(self, 'print', ['*'], None, context)
+        BuiltinFunction.__init__(self, 'print', ['Any'], None, context)
 
 class Builtins(Context):
     def __init__(self):
         Context.__init__(self, None)
-        self.add_type(BuiltinType('*'), None)
+        self.add_type(BuiltinType('Any'), None)
         self.add_term(PrintBuiltin(self), None)
 
 def build(content):
