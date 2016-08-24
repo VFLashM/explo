@@ -31,7 +31,7 @@ class State(object):
     def temp_var(self, type, output):
         self.temp_idx += 1
         varname = 'temp_var_%s' % self.temp_idx
-        
+
         type.transpile(self, output.inserter(), output.inserter(), output)
         output.string(varname)
         output.line(';')
@@ -109,14 +109,15 @@ def TypeDef_transpile(self, tstate, prelude, body, result):
     body.line(';')
 
 def Value_transpile(self, tstate, prelude, body, result):
-    if isinstance(self.value, bool):
-        result.string(str(self.value).lower())
-    else:
-        result.string(str(self.value))
+    if result:
+        if isinstance(self.value, bool):
+            result.string(str(self.value).lower())
+        else:
+            result.string(str(self.value))
 
 def FuncDef_transpile(self, tstate, prelude, body, result):
     if self.func.return_type:
-        self.func.return_type.transpile(prelude, prelude, body)
+        self.func.return_type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     else:
         body.string('void')
     body.string(self.func.name)
@@ -124,9 +125,9 @@ def FuncDef_transpile(self, tstate, prelude, body, result):
     for idx, arg in enumerate(self.func.args):
         if idx != 0:
             body.string(',')
-        arg.var.type.transpile(prelude, prelude, body)
+        arg.var.type.transpile(tstate, prelude, prelude, body)
         body.string(arg.var.name)
-    body.string(')')
+    body.string(') {')
     with tstate.set_flags(in_function=True):
         if self.func.return_type:
             bodypre = body.inserter()
@@ -136,16 +137,17 @@ def FuncDef_transpile(self, tstate, prelude, body, result):
             body.line(';')
         else:
             self.func.body.transpile(tstate, body.inserter(), body.inserter(), None)
+    body.line('};')
 
 def Var_transpile(self, tstate, prelude, body, result):
     result.string(self.name)
 
 def While_transpile(self, tstate, prelude, body, result):
     body.string('while (')
-    self.condition.transpile(prelude, prelude, body)
+    self.condition.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     body.string(')')
     with tstate.set_flags(in_loop=True):
-        self.body.transpile(prelude, body, None)
+        self.body.transpile(tstate, prelude, body, None)
     
 def If_transpile(self, tstate, prelude, body, result):
     if result and self.type:
@@ -183,12 +185,14 @@ def If_transpile(self, tstate, prelude, body, result):
         result.string(outvar)
 
 def Call_transpile(self, tstate, prelude, body, result):
-    self.callee.transpile(tstate, prelude, body, result)
+    if result is None:
+        result = body
+    self.callee.transpile(tstate, prelude.inserter(), prelude.inserter(), result)
     result.string('(')
     for idx, arg in enumerate(self.args):
         if idx != 0:
             result.string(',')
-        arg.transpile(tstate, prelude, body, result)
+        arg.transpile(tstate, prelude.inserter(), prelude.inserter(), result)
     result.string(')')
 
 def Assignment_transpile(self, tstate, prelude, body, result):
