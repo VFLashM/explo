@@ -76,7 +76,10 @@ def Type_transpile(self, tstate):
     tstate.string(self.name)
 
 def Value_transpile(self, tstate):
-    tstate.string(str(self.value))
+    if isinstance(self.value, bool):
+        tstate.string(str(self.value).lower())
+    else:
+        tstate.string(str(self.value))
 
 def FuncDef_transpile(self, tstate):
     if self.func.return_type:
@@ -85,6 +88,11 @@ def FuncDef_transpile(self, tstate):
         tstate.string('void')
     tstate.string(self.func.name)
     tstate.string('(')
+    for idx, arg in enumerate(self.func.args):
+        if idx != 0:
+            tstate.string(',')
+        arg.var.type.transpile(tstate)
+        tstate.string(arg.var.name)
     tstate.string(')')
     with flags(tstate, in_function=True):
         self.func.body.transpile(tstate)
@@ -121,6 +129,9 @@ def Assignment_transpile(self, tstate):
     tstate.string(self.destination.name)
     tstate.string('=')
     self.value.transpile(tstate)
+
+def Function_transpile(self, tstate):
+    tstate.string(self.name)
     
 model.Node.transpile = Node_transpile
 model.Block.transpile = Block_transpile
@@ -134,6 +145,7 @@ model.While.transpile = While_transpile
 model.If.transpile = If_transpile
 model.Call.transpile = Call_transpile
 model.Assignment.transpile = Assignment_transpile
+model.Function.transpile = Function_transpile
 
 if __name__ == '__main__':
     import sys

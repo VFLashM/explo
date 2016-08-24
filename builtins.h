@@ -1,4 +1,5 @@
-#include <stdio.h>
+#include <stdio.h> // printf
+void exit(int status);
 
 typedef int Int;
 typedef int Bool;
@@ -26,3 +27,7 @@ Bool lt(Int a, Int b) { return a < b; }
 Bool leq(Int a, Int b) { return a <= b; }
 
 void print(Int a) { printf("%d\n", a); }
+void abort() {
+    fprintf(stderr, "abort");
+    exit(1);
+}

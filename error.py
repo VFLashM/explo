@@ -6,3 +6,6 @@ class SyntaxError(BaseError):
 
 class InterpreterError(BaseError):
     pass
+
+class ExecutionError(BaseError):
+    pass
