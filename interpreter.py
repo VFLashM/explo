@@ -1,7 +1,7 @@
 import parse
 import model
 import builtins
-from error import RuntimeError
+import error
 
 class State(object):
     def __init__(self, parent=None):
@@ -35,7 +35,7 @@ def Node_execute(self, state):
 def Var_execute(self, state):
     res = state[self.name]
     if res is None:
-        raise RuntimeError('variable not initialized: %s' % self.name)
+        raise error.InterpreterError('variable not initialized: %s' % self.name)
     return res
 
 def VarDef_execute(self, state):

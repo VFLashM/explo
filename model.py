@@ -1,10 +1,10 @@
 import ast
-from error import SyntaxError
+import error
 
-class ModelError(SyntaxError):
-    def __init__(self, error, ast_node):
+class ModelError(error.SyntaxError):
+    def __init__(self, message, ast_node):
+        error.SyntaxError.__init__(self, message)
         self.ast_node = ast_node
-        SyntaxError.__init__(self, error)
 
     def __str__(self):
         return '%s\nwhile parsing: %s\nfrom: %s' % (

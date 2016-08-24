@@ -1,5 +1,8 @@
-class SyntaxError(Exception):
+class BaseError(Exception):
     pass
 
-class RuntimeError(Exception):
+class SyntaxError(BaseError):
+    pass
+
+class InterpreterError(BaseError):
     pass

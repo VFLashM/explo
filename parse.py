@@ -1,11 +1,10 @@
-import functools
 import ply.yacc as yacc
 import ast
 import lexer
 import logging
-from error import SyntaxError
+import error
 
-class ParserError(SyntaxError):
+class ParserError(error.SyntaxError):
     pass
 
 logger = logging.getLogger('parser')

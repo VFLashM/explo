@@ -3,9 +3,7 @@ import os
 import logging
 import model
 import interpreter
-from error import SyntaxError
-from error import RuntimeError
-from model import Undefined
+import error
 
 logger = logging.getLogger('test')
 
@@ -38,7 +36,7 @@ def check(path):
     good = ''.join(good_lines)
     try:
         m = interpreter.build_model(good)
-    except SyntaxError as e:
+    except error.SyntaxError as e:
         raise NoSuccess('Syntax error: %s' % e)
     
     for bad_idx in bad_line_indices:
@@ -52,7 +50,7 @@ def check(path):
         try:
             interpreter.build_model(bad)
             raise TestFailure('No error on line: %s' % test_line)
-        except SyntaxError as e:
+        except error.SyntaxError as e:
             if not error_message.lower() in str(e).lower():
                 raise WrongFailure('Wrong error on line: %s: %s' % (test_line, e))
 
@@ -76,9 +74,9 @@ def check(path):
         good = ''.join(good_lines)
         try:
             interpreter.run_model(interpreter.build_model(good))
-        except SyntaxError as e:
+        except error.SyntaxError as e:
             raise NoSuccess('Syntax error: %s' % e)
-        except RuntimeError as e:
+        except error.InterpreterError as e:
             raise NoSuccess('Runtime error: %s' % e)
 
         for bad_idx in bad_line_indices:
@@ -92,9 +90,9 @@ def check(path):
             try:
                 interpreter.run_model(interpreter.build_model(bad))
                 raise TestFailure('No runtime error on line: %s' % test_line)
-            except SyntaxError as e:
+            except error.SyntaxError as e:
                 raise TestFailure('Unexpected syntax error: %s' % e)
-            except RuntimeError as e:
+            except error.InterpreterError as e:
                 if not error_message.lower() in str(e).lower():
                     raise WrongFailure('Wrong runtime error on line: %s: %s' % (test_line, e))
             

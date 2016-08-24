@@ -1,7 +1,7 @@
 import sys
 import ast
 import model
-from error import RuntimeError
+import error
 
 class BuiltinFunction(model.Node):
     def __init__(self, name, arg_types, return_type, impl, context):
@@ -49,7 +49,7 @@ class Builtins(model.Context):
         model.Context.__init__(self, None)
 
         def abort(*args):
-            raise RuntimeError('abort')
+            raise error.InterpreterError('abort')
         
         self.add_type(BuiltinAnyType(), None)
         self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
