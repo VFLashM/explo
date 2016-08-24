@@ -4,9 +4,18 @@ import tempfile
 import subprocess
 import os
 import error
+
+class ExecutionError(error.BaseError):
+    pass
+
+class CompilationError(error.BaseError):
+    pass
     
 def compile(src, dst):
-    subprocess.check_call(['gcc', src, '-o', dst, '-I.'])
+    try:
+        subprocess.check_call(['gcc', src, '-o', dst, '-I.'])
+    except subprocess.CalledProcessError:
+        raise CompilationError()
 
 def run_c(src, prefix=''):
     fd, binary = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled')
@@ -16,7 +25,7 @@ def run_c(src, prefix=''):
         p = subprocess.Popen([binary], stderr=subprocess.PIPE)
         out, err = p.communicate()
         if p.returncode < 0:
-            raise error.ExecutionError(err)
+            raise ExecutionError(err)
         return p.returncode
     finally:
         os.remove(binary)

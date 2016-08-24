@@ -55,7 +55,9 @@ def runtime_check(path):
         raise NoSuccess('Interpreter runtime error: %s' % e)
     try:
         compiler.run_model(m, prefix)
-    except error.ExecutionError as e:
+    except compiler.CompilationError as e:
+        raise TestFailure('Unable to compile: %s' % e)
+    except compiler.ExecutionError as e:
         raise NoSuccess('Compiler runtime error: %s' % e)
 
     for bad_idx in bad_line_indices:
@@ -79,7 +81,9 @@ def runtime_check(path):
         try:
             compiler.run_model(m, prefix)
             raise TestFailure('No compiler runtime error on line: %s' % test_line)
-        except error.ExecutionError as e:
+        except compiler.CompilationError as e:
+            raise TestFailure('Unable to compile: %s' % e)
+        except compiler.ExecutionError as e:
             if not error_message.lower() in str(e).lower():
                 raise WrongFailure('Wrong compiler runtime error on line: %s: %s' % (test_line, e))
 
