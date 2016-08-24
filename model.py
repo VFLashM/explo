@@ -44,13 +44,6 @@ class KindMismatch(ModelError):
         ModelError.__init__(self, ast_node, 'kind mismatch')
         self.name = name
 
-        
-def check_type_compatible(destination, source, ast_node):
-    if type(destination) == BuiltinType and destination.name == 'Any':
-        return
-    if destination != source:
-        raise TypeMismatch(destination, source, ast_node)
-
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
@@ -86,7 +79,7 @@ class VarDef(Node):
             if self.var.type is None:
                 self.var.type = self.value.type
             else:
-                check_type_compatible(self.var.type, self.value.type, ast_node)
+                self.var.type.check_assignable_from(self.value.type, ast_node)
         else:
             self.value = None
             if self.var.type is None:
@@ -112,6 +105,10 @@ class Expression(Node):
 class Type(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
+
+    def check_assignable_from(self, other, ast_node):
+        if self != other:
+            raise TypeMismatch(self, other, ast_node)
 
 class Value(Expression):
     def __init__(self, value, type, ast_node):
@@ -155,7 +152,7 @@ class Call(Expression):
         if len(self.callee.type.arg_types) != len(self.args):
             raise ModelError('Argument count mismatch', ast_node)
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
-            check_type_compatible(exp_type, got_arg.type, ast_node)
+            exp_type.check_assignable_from(got_arg.type, ast_node)
         self.type = self.callee.type.return_type
 
     def __str__(self):
@@ -173,7 +170,7 @@ class Assignment(Expression):
         if not isinstance(self.destination, Var):
             raise ModelError('Destination is not assignable: %s' % self.destination, ast_node)
         self.value = create_expression(ast_node.value, context)
-        check_type_compatible(self.destination.type, self.value.type, ast_node)
+        self.destination.type.check_assignable_from(self.value.type, ast_node)
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
 
@@ -188,7 +185,8 @@ class If(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
         self.condition = create_expression(ast_node.condition, context)
-        check_type_compatible(context.resolve_type(ast.SimpleType('Bool')), self.condition.type, ast_node)
+        bool_type = context.resolve_type(ast.SimpleType('Bool'))
+        bool_type.check_assignable_from(self.condition.type, ast_node)
         
         self.on_true = Block(ast_node.on_true, context)
         if ast_node.on_false:
@@ -213,7 +211,8 @@ class While(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
         self.condition = create_expression(ast_node.condition, context)
-        check_type_compatible(context.resolve_type(ast.SimpleType('Bool')), self.condition.type, ast_node)
+        bool_type = context.resolve_type(ast.SimpleType('Bool'))
+        bool_type.check_assignable_from(self.condition.type, ast_node)
         self.body = Block(ast_node.body, context)
 
     def __str__(self):
@@ -263,7 +262,7 @@ class Function(Node):
         for st in ast_node.body.statements:
             self.body.add_statement(st)
         if self.return_type:
-            check_type_compatible(self.return_type, self.body.type, ast_node)
+            self.return_type.check_assignable_from(self.body.type, ast_node)
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
@@ -415,6 +414,13 @@ class BuiltinType(Type):
     def __str__(self):
         return 'BuiltinType(%s)' % self.name
 
+class BuiltinAnyType(BuiltinType):
+    def __init__(self):
+        BuiltinType.__init__(self, 'Any')
+
+    def check_assignable_from(self, other, ast_node):
+        pass
+
 class Builtins(Context):
     def __init__(self):
         Context.__init__(self, None)
@@ -422,7 +428,7 @@ class Builtins(Context):
         def abort(*args):
             raise RuntimeError('abort')
         
-        self.add_type(BuiltinType('Any'), None)
+        self.add_type(BuiltinAnyType(), None)
         self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
         self.add_function('abort', [], None, abort)
         
