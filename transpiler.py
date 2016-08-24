@@ -24,7 +24,7 @@ class Output(object):
             space = True
             first = s[0]
             last = self.res[-1][-1]
-            if first in '();':
+            if first in '();,':
                 space = False
             if last in '()':
                 space = False

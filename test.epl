@@ -1,11 +1,5 @@
-fn assert(c: Bool) { if not(c) { abort() } }
-
-var a = { 1 }
-var b: Int = { true 1 }
+let i = { true add(1, 2) }
 
 fn main() {
-   var a = { 12 }
-   assert(ieq(a, 12))
-   var b = { true }
-   assert(b)
+   print(i)
 }
