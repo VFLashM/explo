@@ -7,8 +7,10 @@ var b: Int = { true 1 }
 var e: Int = {} //<error type mismatch
 
 fn main() {
-   var a = { 12 }
+   var a = { print(1) 12 }
    assert(ieq(a, 12))
-   var b = { true }
+   var b = { print(2) true }
    assert(b)
+   var c = { { { 1 } } }
+   assert(ieq(c, 1))
 }
