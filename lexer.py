@@ -1,3 +1,4 @@
+#!env python2.7
 import logging
 import ply.lex as lex
 

@@ -1,3 +1,4 @@
+#!env python2.7
 import ast
 import error
 

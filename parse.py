@@ -1,3 +1,4 @@
+#!env python2.7
 import ply.yacc as yacc
 import ast
 import lexer
