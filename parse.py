@@ -111,14 +111,17 @@ def p_def_var_typed(p):
     p[0] = ast.Var(p[2], p[4], readonly, value)
     add_srcmap(p, 2)
 
+def p_block(p):
+    '''block : LBRACE statement_list RBRACE'''
+    p[0] = p[2]
     
 def p_def_fn(p):
-    '''def : FN ID LPAREN arg_def_list RPAREN LBRACE statement_list RBRACE
-           | FN ID LPAREN arg_def_list RPAREN ARROW type LBRACE statement_list RBRACE'''
-    if len(p) >= 11:
-        p[0] = ast.Func(p[2], p[4], p[7], p[9])
+    '''def : FN ID LPAREN arg_def_list RPAREN block
+           | FN ID LPAREN arg_def_list RPAREN ARROW type block'''
+    if len(p) >= 9:
+        p[0] = ast.Func(p[2], p[4], p[7], p[8])
     else:
-        p[0] = ast.Func(p[2], p[4], None, p[7])
+        p[0] = ast.Func(p[2], p[4], None, p[6])
     add_srcmap(p, 2)
 
 def p_expr_term(p):
@@ -141,6 +144,20 @@ def p_expr_call(p):
     p[0] = ast.Call(p[1], p[3])
     add_srcmap(p, 1)
 
+def p_expr_if(p):
+    '''expr : IF expr block
+            | IF expr block ELSE block'''
+    if len(p) > 4:
+        p[0] = ast.If(p[2], p[3], p[5])
+    else:
+        p[0] = ast.If(p[2], p[3], None)
+    add_srcmap(p, 1)
+
+def p_expr_while(p):
+    '''expr : WHILE expr block'''
+    p[0] = ast.While(p[2], p[3])
+    add_srcmap(p, 1)
+    
 def p_expr_list(p):
     '''expr_list : expr
                  | expr_list COMMA expr

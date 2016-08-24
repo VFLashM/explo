@@ -173,7 +173,46 @@ class Assignment(Expression):
     def execute(self, state):
         value = self.value.execute(state)
         state[self.destination.name] = value
+
+class If(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
+        self.condition = create_expression(ast_node.condition, context)
+        check_type_compatible(context.resolve_type(ast.SimpleType('Bool')), self.condition.type, ast_node)
         
+        self.on_true = Block(ast_node.on_true, context)
+        if ast_node.on_false:
+            self.on_false = Block(ast_node.on_false, context)
+        else:
+            self.on_false = None
+
+    def __str__(self):
+        return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
+
+    def execute(self, state):
+        cond = self.condition.execute(state)
+        if cond.value:
+            return self.on_true.execute(state)
+        elif self.on_false:
+            return self.on_false.execute(state)
+
+class While(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
+        self.condition = create_expression(ast_node.condition, context)
+        check_type_compatible(context.resolve_type(ast.SimpleType('Bool')), self.condition.type, ast_node)
+        self.body = Block(ast_node.body, context)
+
+    def __str__(self):
+        return 'While(%s, %s)' % (self.condition, self.body)
+
+    def execute(self, state):
+        while True:
+            cond = self.condition.execute(state)
+            if not cond.value:
+                break
+            self.body.execute(state)
+
 def create_expression(ast_node, context):
     if isinstance(ast_node, ast.Term):
         return context.resolve_term(ast_node.name, ast_node)
@@ -181,6 +220,10 @@ def create_expression(ast_node, context):
         return Call(ast_node, context)
     elif isinstance(ast_node, ast.Assignment):
         return Assignment(ast_node, context)
+    elif isinstance(ast_node, ast.If):
+        return If(ast_node, context)
+    elif isinstance(ast_node, ast.While):
+        return While(ast_node, context)
     elif isinstance(ast_node, ast.Value):
         type = context.resolve_type(ast_node.type)
         return Value(ast_node.value, type, ast_node)
@@ -198,7 +241,7 @@ class Function(Node):
             self.return_type = None
         arg_types = [arg.var.type for arg in self.args]
         self.type = FuncType(arg_types, self.return_type)
-        self.body = Block(context)
+        self.body = Block(None, context)
         for arg in self.args:
             self.body.names.add(arg.var.name)
             self.body.terms[arg.var.name] = arg.var
@@ -295,10 +338,13 @@ class Context(object):
         return res
 
 class Block(Context):
-    def __init__(self, parent):
+    def __init__(self, statements, parent):
         Context.__init__(self, parent)
         self.statements = []
         self.return_type = None
+        if statements:
+            for st in statements:
+                self.add_statement(st)
 
     def add_statement(self, ast_node):
         if isinstance(ast_node, ast.Definition):
@@ -350,6 +396,9 @@ class BuiltinFunction(Node):
 class BuiltinType(Type):
     def __init__(self, name):
         self.name = name
+        
+    def __str__(self):
+        return 'BuiltinType(%s)' % self.name
 
 class Builtins(Context):
     def __init__(self):
@@ -407,7 +456,7 @@ def build(content):
     statements = parse.parse(content)
     assert statements is not None, 'Parser returned none'
     builtins = Builtins()
-    res = Block(builtins)
+    res = Block(None, builtins)
     for st in statements:
         res.add_statement(st)
     return res

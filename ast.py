@@ -106,3 +106,19 @@ class Value(Expression):
     def __str__(self):
         return 'Value(%s, %s)' % (self.value, self.type)
 
+class If(Expression):
+    def __init__(self, condition, on_true, on_false):
+        self.condition = condition
+        self.on_true = on_true
+        self.on_false = on_false
+
+    def __str__(self):
+        return 'If(%s, %s, %s)' % (self.condition, map(str, self.on_true), map(str, self.on_false) if self.on_false else None)
+
+class While(Expression):
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+    def __str__(self):
+        return 'While(%s, %s)' % (self.condition, map(str, self.body))

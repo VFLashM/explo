@@ -9,6 +9,9 @@ keywords = (
     'fn',
     'let',
     'var',
+    'if',
+    'else',
+    'while',
     )
 tokens = (
     'ID',

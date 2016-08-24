@@ -1,0 +1,32 @@
+fn test_if() {
+   if ieq(1, 2) {
+      print(0)
+   }
+   if true {
+      print(0)
+   }
+   if true {}
+   if 1 {} //<error type mismatch
+   if print(1) {} //<error type mismatch
+}
+
+fn test_if_else() {
+   if ieq(1, 2) {
+     print(1)
+   } else {
+     print(0)
+   }
+}
+
+fn test_while() {
+   while true {
+     print(1)
+   }
+   while ieq(1, 2) {
+     print(2)
+   }
+   while true {}
+
+   while 1 {} //<error type mismatch
+   while print(1) {} //<error type mismatch
+}

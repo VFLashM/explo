@@ -1,28 +1,14 @@
-enum Nat {
-     one,
-     two,
-     three,
-}
-enum Bool {
-     true,
-     false,
-}
-type T = Bool
-type Test = (Bool, Bool)
-
-let onevar = one
-var twovar : Nat = two
-
-fn first(a: Nat, b: Nat) -> Nat {
-   a
-}
-fn get_one() {
-   one
-}
-fn main() -> Nat {
-  print(add(1,5))
-  let a = first(one, two)
-  twovar = a
-  print(twovar)
-  twovar
+fn main() {
+   var i = 10
+   while not(ieq(i, 0)) {
+      if ieq(div(i, 5), 0) {
+        print(i)
+      } else {
+        print(-1)
+      }
+      if ieq(i, 1) {
+         print(1)
+      }
+      i = sub(i, 1)
+   }
 }
