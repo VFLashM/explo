@@ -1,10 +1,10 @@
 #include <stdio.h> // printf
-void exit(int status);
+#include <signal.h>
 
 typedef int Int;
 typedef int Bool;
 const Bool true = 1;
-const Bool false = 1;
+const Bool false = 0;
 
 Bool and(Bool a, Bool b) { return a && b; }
 Bool or(Bool a, Bool b) { return a || b; }
@@ -29,5 +29,5 @@ Bool leq(Int a, Int b) { return a <= b; }
 void print(Int a) { printf("%d\n", a); }
 void abort() {
     fprintf(stderr, "abort");
-    exit(1);
+    raise(SIGABRT);
 }
