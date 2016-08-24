@@ -413,15 +413,20 @@ class Builtins(Context):
         self.add_function('xor', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
         self.add_function('not', ['Bool'], 'Bool', lambda x, args: not args[0])
         self.add_function('beq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] == args[1])
+        self.add_function('bneq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
         
         self.add_type(BuiltinType('Int'), None)
         self.add_function('add', ['Int', 'Int'], 'Int', lambda x, args: args[0] + args[1])
         self.add_function('sub', ['Int', 'Int'], 'Int', lambda x, args: args[0] - args[1])
         self.add_function('mul', ['Int', 'Int'], 'Int', lambda x, args: args[0] * args[1])
         self.add_function('div', ['Int', 'Int'], 'Int', lambda x, args: args[0] / args[1])
+        self.add_function('mod', ['Int', 'Int'], 'Int', lambda x, args: args[0] % args[1])
         self.add_function('ieq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] == args[1])
-        
-        
+        self.add_function('ineq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] != args[1])
+        self.add_function('gt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] > args[1])
+        self.add_function('geq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] >= args[1])
+        self.add_function('lt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] < args[1])
+        self.add_function('leq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] <= args[1])
 
     def add_function(self, name, args, return_type, impl):
         fn = BuiltinFunction(name, args, return_type, impl, self)
