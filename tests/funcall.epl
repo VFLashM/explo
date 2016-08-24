@@ -8,6 +8,7 @@ fn first(a: Bool, b: Bool) {
    a
 }
 fn second(a: Bool, b: Bool) {
+   truefn()
    first(b, a)
 }
 fn assign(a: Bool) -> Bool {

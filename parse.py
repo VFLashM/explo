@@ -165,7 +165,8 @@ def p_expr_while(p):
     add_srcmap(p, 1)
     
 def p_expr_list(p):
-    '''expr_list : expr
+    '''expr_list :
+                 | expr
                  | expr_list COMMA expr
     '''
     _process_list(p)
