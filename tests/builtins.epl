@@ -1,0 +1,34 @@
+var i1: Int = 0
+var i2 = 1
+var i3 = -1
+var i4 = -0
+// var i5 = 01 //<error unexpected token
+// var i6 = -01 //<error unexpected token
+
+// var f1: Float = 0.0
+// var f2 = 1.2
+// var f3 = -1.2
+// var f4 = .0 //<error unexpected token
+// var f5 = 1. //<error unexpected token
+// var f6 = -.0 //<error unexpected token
+// var f7 = -1. //<error unexpected token
+
+var b1: Bool = true
+var b2 = false
+
+var iadd: Int = add(1, 2)
+var isub: Int = sub(1, 2)
+var imul: Int = mul(1, 2)
+var idiv: Int = div(1, 2)
+var ieq: Bool = ieq(1, 2)
+
+var band: Bool = and(true, false)
+var bor: Bool = or(true, false)
+var bxor: Bool = xor(true, false)
+var bnot: Bool = not(true)
+var beq: Bool = beq(true, false)
+
+fn test_print() {
+   print(1)
+   print(true)
+}
