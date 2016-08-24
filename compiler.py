@@ -18,16 +18,14 @@ if __name__ == '__main__':
     m.transpile(tstate)
     code.flush()
 
-    code.seek(0)
-    print code.read()
+    # code.seek(0)
+    # print code.read()
 
     fd, out = tempfile.mkstemp(suffix='_compiled')
     os.close(fd)
     try:
         subprocess.check_call(['gcc', code.name, '-o', out, '-I.'])
-        print 'Executing'
         rc = subprocess.call([out])
-        print 'Done with rc=%s' % rc
     except subprocess.CalledProcessError as e:
         print e
         sys.exit(e.returncode)

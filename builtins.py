@@ -30,6 +30,9 @@ class BuiltinFunction(model.Node):
         if self.return_type:
             return model.Value(ret_value, self.return_type, None)
 
+    def transpile(self, tstate):
+        tstate.string(self.name)
+
 class BuiltinType(model.Type):
     def __init__(self, name):
         self.name = name
