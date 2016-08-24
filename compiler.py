@@ -32,8 +32,8 @@ def run_c(src, prefix=''):
 
 def run_model(m, prefix=''):
     code = tempfile.NamedTemporaryFile(prefix=prefix + '_', suffix='_transpiled.c')
-    tstate = transpiler.State(code)
-    m.transpile(tstate)
+    transpiled = transpiler.transpile_model(m)
+    code.write(transpiled)
     code.flush()
     return run_c(code.name)
 
@@ -54,8 +54,8 @@ if __name__ == '__main__':
 
     code = tempfile.NamedTemporaryFile(suffix='_transpiled.c', prefix=prefix + '_')
     m = interpreter.build_model(content)
-    tstate = transpiler.State(code)
-    m.transpile(tstate)
+    transpiled = transpiler.transpile_model(m)
+    code.write(transpiled)
     code.flush()
 
     if args.debug:
