@@ -3,22 +3,48 @@ import model
 import interpreter
 
 class Output(object):
-    def __init__(self):
+    def __init__(self, indent=False):
+        self.indent = indent
         self.res = []
+        self.newline = True
 
-    def inserter(self):
-        op = Output()
+    def inserter(self, indent=False):
+        op = Output(indent)
         self.res.append(op)
+        self.newline = True
         return op
 
     def string(self, s):
-        self.res.append(s + ' ')
+        if not s:
+            return
+        if self.newline:
+            self.res.append(s)
+            self.newline = False
+        else:
+            space = True
+            first = s[0]
+            last = self.res[-1][-1]
+            if first in '();':
+                space = False
+            if last in '()':
+                space = False
+            if first == '{' and last == ')':
+                space = True
+            if space:
+                s = ' ' + s
+            self.res[-1] += s
         
     def line(self, s):
-        self.res.append(s + '\n')
+        self.string(s)
+        self.newline = True
 
     def __str__(self):
-        return ''.join(map(str, self.res))
+        res = '\n'.join(filter(bool, map(str, self.res)))
+        if self.indent:
+            lines = res.splitlines(True)
+            return ''.join('  ' + l for l in lines)
+        else:
+            return res
 
 class State(object):
     flags = ('in_function', 'in_loop')
@@ -28,9 +54,9 @@ class State(object):
             setattr(self, key, False)
         self.temp_idx = 0
 
-    def temp_var(self, type, output):
+    def temp_var(self, name, type, output):
         self.temp_idx += 1
-        varname = 'temp_var_%s' % self.temp_idx
+        varname = '__%s_%s' % (name, self.temp_idx)
 
         type.transpile(self, output.inserter(), output.inserter(), output)
         output.string(varname)
@@ -53,25 +79,28 @@ def Node_transpile(self, tstate, prelude, body, output):
     raise NotImplementedError(type(self))
 
 def Block_transpile(self, tstate, prelude, body, result):
+    if not self.statements:
+        self.body.string('{}')
     if len(self.statements) == 1 and result:
         self.statements[0].transpile(tstate, prelude, body, result)
         return
     if result and self.type:
-        outvar = tstate.temp_var(self.type, prelude)
+        outvar = tstate.temp_var('block_result', self.type, prelude)
     else:
         outvar = None
 
     body.line('{')
+    indented = body.inserter(True)
     for idx, st in enumerate(self.statements):
         if idx+1 == len(self.statements) and outvar:
-            stpre = body.inserter()
-            stout = body.inserter()
-            body.string(outvar)
-            body.string('=')
-            st.transpile(tstate, stpre, stout, body)
+            stpre = indented.inserter()
+            stout = indented.inserter()
+            indented.string(outvar)
+            indented.string('=')
+            st.transpile(tstate, stpre, stout, indented)
+            indented.line(';')
         else:
-            st.transpile(tstate, body.inserter(), body.inserter(), None)
-        body.line(';')
+            st.transpile(tstate, indented.inserter(), indented.inserter(), None)
     body.line('}')
 
     if outvar:
@@ -130,13 +159,14 @@ def FuncDef_transpile(self, tstate, prelude, body, result):
     body.string(') {')
     with tstate.set_flags(in_function=True):
         if self.func.return_type:
-            bodypre = body.inserter()
-            bodybody = body.inserter()
-            body.string('return')
-            self.func.body.transpile(tstate, bodypre, bodybody, body)
-            body.line(';')
+            bodypre = body.inserter(True)
+            bodybody = body.inserter(True)
+            bodyresult = body.inserter(True)
+            bodyresult.string('return')
+            self.func.body.transpile(tstate, bodypre, bodybody, bodyresult)
+            bodyresult.line(';')
         else:
-            self.func.body.transpile(tstate, body.inserter(), body.inserter(), None)
+            self.func.body.transpile(tstate, body.inserter(True), body.inserter(True), None)
     body.line('};')
 
 def Var_transpile(self, tstate, prelude, body, result):
@@ -151,33 +181,35 @@ def While_transpile(self, tstate, prelude, body, result):
     
 def If_transpile(self, tstate, prelude, body, result):
     if result and self.type:
-        outvar = tstate.temp_var(self.type, prelude)
+        outvar = tstate.temp_var('if_result', self.type, prelude)
     else:
         outvar = None
     body.string('if (')
     self.condition.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     body.string(') {')
+    indented = body.inserter(True)
     if outvar:
-        cpre = body.inserter()
-        cbody = body.inserter()
-        body.string(outvar)
-        body.string('=')
-        self.on_true.transpile(tstate, cpre, cbody, body)
+        cpre = indented.inserter()
+        cbody = indented.inserter()
+        indented.string(outvar)
+        indented.string('=')
+        self.on_true.transpile(tstate, cpre, cbody, indented)
+        indented.line(';')
     else:
-        self.on_true.transpile(tstate, body.inserter(), body.inserter(), None)
-    body.line(';')
+        self.on_true.transpile(tstate, indented.inserter(), indented.inserter(), None)
     
     if self.on_false:
         body.line('} else {')
+        indented = body.inserter(True)
         if outvar:
-            cpre = body.inserter()
-            cbody = body.inserter()
-            body.string(outvar)
-            body.string('=')
-            self.on_false.transpile(tstate, cpre, cbody, body)
+            cpre = indented.inserter()
+            cbody = indented.inserter()
+            indented.string(outvar)
+            indented.string('=')
+            self.on_false.transpile(tstate, cpre, cbody, indented)
+            indented.line(';')
         else:
-            self.on_false.transpile(tstate, body.inserter(), body.inserter(), None)
-        body.line(';')
+            self.on_false.transpile(tstate, indented.inserter(), indented.inserter(), None)
 
     body.line('}')
         
@@ -194,11 +226,14 @@ def Call_transpile(self, tstate, prelude, body, result):
             result.string(',')
         arg.transpile(tstate, prelude.inserter(), prelude.inserter(), result)
     result.string(')')
+    if result == body:
+        result.line(';')
 
 def Assignment_transpile(self, tstate, prelude, body, result):
     body.string(self.destination.name)
     body.string('=')
     self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+    body.line(';')
 
 def Function_transpile(self, tstate, prelude, body, result):
     result.string(self.name)
