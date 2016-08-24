@@ -326,6 +326,10 @@ class Block(Expression, Context):
     def __str__(self):
         return 'Block {\n%s\n}' % '\n'.join(self._indent(str(st)) for st in self.statements)
 
+class Program(Block):
+    def __str__(self):
+        return '\n'.join(map(str, self.statements))
+
 if __name__ == '__main__':
     import sys
     import logging
@@ -340,6 +344,6 @@ if __name__ == '__main__':
     
     program = parse.parse(content)
     b = builtins.Builtins()
-    m = model.Block(program, b)
+    m = model.Program(program, b)
     print m
     

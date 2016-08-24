@@ -109,7 +109,7 @@ model.Block.execute = Block_execute
 def build_model(content):
     program = parse.parse(content)
     builtins_context = builtins.Builtins()
-    return model.Block(program, builtins_context)
+    return model.Program(program, builtins_context)
 
 def run_model(m):
     main = m.resolve_term('main', None)
