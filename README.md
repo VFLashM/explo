@@ -2,8 +2,7 @@
 Lang playground
 
 roadmap:
-1. basic builtins
-2. control flow
+
 3. basic polymorphism
 4. compile-time execution
 5. references
