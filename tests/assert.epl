@@ -1,0 +1,7 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
+fn main() {
+   abort() //<runtime abort
+   assert(true)
+   assert(false) //<runtime abort
+}

@@ -1,8 +1,12 @@
+import sys
 import logging
 from collections import namedtuple
 import ast
 import parse
 from error import SyntaxError
+
+class RuntimeError(Exception):
+    pass
 
 class ModelError(SyntaxError):
     def __init__(self, error, ast_node):
@@ -408,11 +412,17 @@ class BuiltinType(Type):
 class Builtins(Context):
     def __init__(self):
         Context.__init__(self, None)
+
+        def abort(*args):
+            raise RuntimeError('abort')
         
         self.add_type(BuiltinType('Any'), None)
         self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
-
-        self.add_def(ast.Enum('Bool', ['false', 'true']))
+        self.add_function('abort', [], None, abort)
+        
+        bool_type = self.add_def(ast.Enum('Bool', ['false', 'true']))
+        for v in bool_type.values:
+            v.value = v.value == 'true'
         self.add_function('and', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] and args[1])
         self.add_function('or', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] or args[1])
         self.add_function('xor', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
@@ -471,17 +481,20 @@ def build(content):
         res.add_statement(st)
     return res
 
+def run(model):
+    main = model.resolve_term('main', None)
+    assert main, 'No main found'
+    res = main.call(State(), [])
+    if res and res.type.name == 'Int':
+        return res.value
+    else:
+        return 0
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    import sys
     path = sys.argv[1]
     content = open(path).read()
     p = build(content)
     print p
     print
-    state = State()
-    p.execute(state)
-    main = p.resolve_term('main', None)
-    res = main.call(state, [])
-    if res and res.type.name == 'Int':
-        sys.exit(res.value)
+    run(p)
