@@ -1,11 +1,5 @@
-import sys
-import logging
 import ast
-import parse
 from error import SyntaxError
-
-class RuntimeError(Exception):
-    pass
 
 class ModelError(SyntaxError):
     def __init__(self, error, ast_node):
@@ -46,9 +40,6 @@ class KindMismatch(ModelError):
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
-
-    def execute(self, state):
-        raise NotImplementedError(type(self))
         
 class Var(Node):
     def __init__(self, ast_node, context):
@@ -62,12 +53,6 @@ class Var(Node):
 
     def __str__(self):
         return 'Var(%s, %s)' % (self.name, self.type.name)
-
-    def execute(self, state):
-        res = state[self.name]
-        if res is None:
-            raise RuntimeError('variable not initialized: %s' % self.name)
-        return res
 
 class VarDef(Node):
     def __init__(self, ast_node, context):
@@ -88,13 +73,6 @@ class VarDef(Node):
 
     def __str__(self):
         return 'VarDef(%s = %s)' % (self.var, self.value)
-
-    def execute(self, state):
-        if self.value:
-            value = self.value.execute(state)
-        state.add(self.var.name)
-        if self.value:
-            state[self.var.name] = value
 
 class Expression(Node):
     def __init__(self, ast_node):
@@ -118,9 +96,6 @@ class Value(Expression):
     def __str__(self):
         return 'Value(%s, %s)' % (self.value, self.type.name)
 
-    def execute(self, state):
-        return self
-
 class Enum(Type):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
@@ -130,13 +105,13 @@ class Enum(Type):
     def __str__(self):
         return 'Enum(%s, %s)' % (self.name, [v.value for v in self.values])
 
-    def execute(self, state):
-        pass
-
 class FuncType(Type):
     def __init__(self, arg_types, return_type):
         self.arg_types = arg_types
         self.return_type = return_type
+
+    def __str__(self):
+        return 'FuncType(%s, %s)' % (map(str, self.arg_types), self.return_type)
 
 class Tuple(Type):
     def __init__(self, members):
@@ -147,7 +122,8 @@ class Call(Expression):
         self.callee = create_expression(ast_node.callee, context)
         self.args = [create_expression(arg, context) for arg in ast_node.args]
         if not isinstance(self.callee.type, FuncType):
-            raise ModelError('Not callable', ast_node)
+            print type(self.callee.type), FuncType, isinstance(self.callee.type, FuncType)
+            raise ModelError('Not callable: %s' % self.callee.type, ast_node)
         if len(self.callee.type.arg_types) != len(self.args):
             raise ModelError('Argument count mismatch', ast_node)
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
@@ -156,11 +132,6 @@ class Call(Expression):
 
     def __str__(self):
         return 'Call(%s, %s)' % (self.callee.name, map(str, self.args))
-
-    def execute(self, state):
-        callee = self.callee.execute(state)
-        args = [a.execute(state) for a in self.args]
-        return callee.call(state, args)
 
 class Assignment(Expression):
     def __init__(self, ast_node, context):
@@ -175,10 +146,6 @@ class Assignment(Expression):
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
-
-    def execute(self, state):
-        value = self.value.execute(state)
-        state[self.destination.name] = value
 
 class If(Expression):
     def __init__(self, ast_node, context):
@@ -199,13 +166,6 @@ class If(Expression):
     def __str__(self):
         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
 
-    def execute(self, state):
-        cond = self.condition.execute(state)
-        if cond.value:
-            return self.on_true.execute(state)
-        elif self.on_false:
-            return self.on_false.execute(state)
-
 class While(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
@@ -216,13 +176,6 @@ class While(Expression):
 
     def __str__(self):
         return 'While(%s, %s)' % (self.condition, self.body)
-
-    def execute(self, state):
-        while True:
-            cond = self.condition.execute(state)
-            if not cond.value:
-                break
-            self.body.execute(state)
 
 def create_expression(ast_node, context):
     if isinstance(ast_node, ast.Term):
@@ -265,17 +218,6 @@ class Function(Node):
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
-
-    def execute(self, state):
-        return self
-
-    def call(self, state, args):
-        fnstate = State(state)
-        for avardef, avalue in zip(self.args, args):
-            fnstate.add(avardef.var.name)
-            fnstate[avardef.var.name] = avalue
-        return self.body.execute(fnstate)
-        
 
 class Context(object):
     def __init__(self, parent):
@@ -374,61 +316,20 @@ class Block(Expression, Context):
     def __str__(self):
         return 'Block {\n%s\n}' % '\n'.join(self._indent(str(st)) for st in self.statements)
 
-    def execute(self, state):
-        res = None
-        for st in self.statements:
-            res = st.execute(state)
-        return res
-
-
-class State(object):
-    def __init__(self, parent=None):
-        self.parent = parent
-        self.values = {}
-
-    def add(self, name):
-        assert name not in self.values
-        self.values[name] = None
-
-    def __setitem__(self, key, value):
-        if key in self.values:
-            self.values[key] = value
-        elif self.parent:
-            self.parent[key] = value
-        else:
-            assert False
-
-    def __getitem__(self, key):
-        if key in self.values:
-            return self.values[key]
-        elif self.parent:
-            return self.parent[key]
-        else:
-            assert False
-
-def build(content):
-    statements = parse.parse(content)
-    assert statements is not None, 'Parser returned none'
-    import builtins
-    res = Block(None, builtins.Builtins())
-    for st in statements:
-        res.add_statement(st)
-    return res
-
-def run(model):
-    main = model.resolve_term('main', None)
-    assert main, 'No main found'
-    res = main.call(State(), [])
-    if res and res.type.name == 'Int':
-        return res.value
-    else:
-        return 0
-
 if __name__ == '__main__':
+    import sys
+    import logging
     logging.basicConfig(level=logging.DEBUG)
+
+    import model # sigh, import self to have matching classes in builtins and here
+    import parse
+    import builtins
+    
     path = sys.argv[1]
     content = open(path).read()
-    p = build(content)
-    print p
-    print
-    run(p)
+    
+    program = parse.parse(content)
+    b = builtins.Builtins()
+    m = model.Block(program, b)
+    print m
+    

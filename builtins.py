@@ -1,7 +1,7 @@
 import sys
 import ast
 import model
-from model import RuntimeError
+from error import RuntimeError
 
 class BuiltinFunction(model.Node):
     def __init__(self, name, arg_types, return_type, impl, context):

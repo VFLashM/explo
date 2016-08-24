@@ -10,7 +10,7 @@ class ParserError(SyntaxError):
 
 logger = logging.getLogger('parser')
 tokens = lexer.tokens
-start = 'def_list'
+start = 'program'
 
 def add_srcmap(p, idx):
     if isinstance(p[idx], ast.Node):
@@ -39,6 +39,10 @@ def _process_list(p, sep=1):
         p[0] = [p[1]]
     else:
         p[0] = p[1] + [p[2+sep]]
+
+def p_program(p):
+    '''program : def_list'''
+    p[0] = ast.Block(p[1])
 
 def p_def_list(p):
     '''def_list : def

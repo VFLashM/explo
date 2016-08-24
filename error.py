@@ -1,5 +1,5 @@
 class SyntaxError(Exception):
     pass
 
-class ParserError(SyntaxError):
+class RuntimeError(Exception):
     pass

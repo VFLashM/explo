@@ -2,8 +2,9 @@ import sys
 import os
 import logging
 import model
+import interpreter
 from error import SyntaxError
-from model import RuntimeError
+from error import RuntimeError
 from model import Undefined
 
 logger = logging.getLogger('test')
@@ -36,7 +37,7 @@ def check(path):
 
     good = ''.join(good_lines)
     try:
-        m = model.build(good)
+        m = interpreter.build_model(good)
     except SyntaxError as e:
         raise NoSuccess('Syntax error: %s' % e)
     
@@ -49,7 +50,7 @@ def check(path):
                 bad_lines[other_bad_idx] = '\n'
         bad = ''.join(bad_lines)
         try:
-            model.build(bad)
+            interpreter.build_model(bad)
             raise TestFailure('No error on line: %s' % test_line)
         except SyntaxError as e:
             if not error_message.lower() in str(e).lower():
@@ -74,7 +75,7 @@ def check(path):
 
         good = ''.join(good_lines)
         try:
-            model.run(model.build(good))
+            interpreter.run_model(interpreter.build_model(good))
         except SyntaxError as e:
             raise NoSuccess('Syntax error: %s' % e)
         except RuntimeError as e:
@@ -89,7 +90,7 @@ def check(path):
                     bad_lines[other_bad_idx] = '\n'
             bad = ''.join(bad_lines)
             try:
-                model.run(model.build(bad))
+                interpreter.run_model(interpreter.build_model(bad))
                 raise TestFailure('No runtime error on line: %s' % test_line)
             except SyntaxError as e:
                 raise TestFailure('Unexpected syntax error: %s' % e)
