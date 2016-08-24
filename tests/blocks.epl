@@ -1,5 +1,14 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
 var a = { 1 }
 var b: Int = { true 1 }
 //var c = {} //<error type mismatch
 //var d: () = {} //<error type mismatch
 var e: Int = {} //<error type mismatch
+
+fn main() {
+   var a = { 12 }
+   assert(ieq(a, 12))
+   var b = { true }
+   assert(b)
+}

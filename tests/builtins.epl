@@ -1,3 +1,5 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
 var i1: Int = 0
 var i2 = 1
 var i3 = -1
@@ -21,8 +23,8 @@ var isub: Int = sub(1, 2)
 var imul: Int = mul(1, 2)
 var idiv: Int = div(1, 2)
 var imod: Int = mod(1, 2)
-var ieq: Bool = ieq(1, 2)
-var ineq: Bool = ineq(1, 2)
+var ieqv: Bool = ieq(1, 2)
+var ineqv: Bool = ineq(1, 2)
 var igt: Bool = gt(1, 2)
 var igeq: Bool = geq(1, 2)
 var ilt: Bool = lt(1, 2)
@@ -32,10 +34,68 @@ var band: Bool = and(true, false)
 var bor: Bool = or(true, false)
 var bxor: Bool = xor(true, false)
 var bnot: Bool = not(true)
-var beq: Bool = beq(true, false)
-var bneq: Bool = bneq(true, false)
+var beqv: Bool = beq(true, false)
+var bneqv: Bool = bneq(true, false)
 
 fn test_print() {
    print(1)
    print(true)
+}
+
+fn main() {
+   assert(not(false))
+   assert(not(true)) //<runtime abort
+   assert(not(not(true)))
+   assert(not(not(false))) //<runtime abort
+   
+   assert(beq(true, true))
+   assert(beq(false, false))
+   assert(not(beq(false, true)))
+   assert(not(beq(true, false)))
+   
+   assert(bneq(false, true))
+   assert(bneq(true, false))
+   assert(not(bneq(true, true)))
+   assert(not(bneq(false, false)))
+
+   assert(and(true, true))
+   assert(not(and(true, false)))
+   assert(not(and(false, true)))
+   assert(not(and(false, false)))
+   
+   assert(or(true, true))
+   assert(or(true, false))
+   assert(or(false, true))
+   assert(not(or(false, false)))
+
+   assert(not(xor(true, true)))
+   assert(xor(true, false))
+   assert(xor(false, true))
+   assert(not(xor(false, false)))
+
+   assert(ieq(1, 1))
+   assert(not(ieq(1, 2)))
+
+   assert(not(ineq(1, 1)))
+   assert(ineq(1, 2))
+
+   assert(gt(2, 1))
+   assert(not(gt(2, 2)))
+   assert(not(gt(2, 3)))
+   assert(geq(2, 1))
+   assert(geq(2, 2))
+   assert(not(geq(2, 3)))
+
+   assert(lt(2, 3))
+   assert(not(lt(2, 2)))
+   assert(not(lt(2, 1)))
+   assert(leq(2, 3))
+   assert(leq(2, 2))
+   assert(not(leq(2, 1)))
+
+   assert(ieq(5, add(2, 3)))
+   assert(ieq(-1, sub(2, 3)))
+   assert(ieq(6, mul(2, 3)))
+   assert(ieq(2, div(6, 3)))
+   assert(ieq(2, mod(5, 3)))
 }
