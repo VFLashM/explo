@@ -18,7 +18,7 @@ class State(object):
         elif self.parent:
             self.parent[key] = value
         else:
-            assert False
+            assert False, key
 
     def __getitem__(self, key):
         if key in self.values:
@@ -26,8 +26,7 @@ class State(object):
         elif self.parent:
             return self.parent[key]
         else:
-            assert False
-
+            assert False, key
 
 def Node_execute(self, state):
     raise NotImplementedError(type(self))
@@ -77,6 +76,9 @@ def While_execute(self, state):
 def Function_execute(self, state):
     return self
 
+def FuncDef_execute(self, state):
+    pass
+
 def Function_call(self, state, args):
     fnstate = State(state)
     for avardef, avalue in zip(self.args, args):
@@ -100,6 +102,7 @@ model.Assignment.execute = Assignment_execute
 model.If.execute = If_execute
 model.While.execute = While_execute
 model.Function.execute = Function_execute
+model.FuncDef.execute = FuncDef_execute
 model.Function.call = Function_call
 model.Block.execute = Block_execute
 
@@ -111,7 +114,10 @@ def build_model(content):
 def run_model(m):
     main = m.resolve_term('main', None)
     assert main, 'No main found'
-    res = main.call(State(), [])
+
+    state = State()
+    m.execute(state)
+    res = main.call(state, [])
     if res and res.type.name == 'Int':
         return res.value
     else:

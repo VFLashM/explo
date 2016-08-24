@@ -40,10 +40,26 @@ class KindMismatch(ModelError):
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
-        
-class Var(Node):
-    def __init__(self, ast_node, context):
+
+class Definition(Node):
+    pass
+
+class Type(Node):
+    def __init__(self, ast_node):
         Node.__init__(self, ast_node)
+
+    def check_assignable_from(self, other, ast_node):
+        if self != other:
+            raise TypeMismatch(self, other, ast_node)
+
+class Expression(Node):
+    def __init__(self, ast_node):
+        Node.__init__(self, ast_node)
+        self.type = None
+
+class Var(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
         self.name = ast_node.name
         self.readonly = ast_node.readonly
         if ast_node.type is not None:
@@ -54,7 +70,7 @@ class Var(Node):
     def __str__(self):
         return 'Var(%s, %s)' % (self.name, self.type.name)
 
-class VarDef(Node):
+class VarDef(Definition):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
         self.var = Var(ast_node, context)
@@ -73,19 +89,6 @@ class VarDef(Node):
 
     def __str__(self):
         return 'VarDef(%s = %s)' % (self.var, self.value)
-
-class Expression(Node):
-    def __init__(self, ast_node):
-        Node.__init__(self, ast_node)
-        self.type = None
-
-class Type(Node):
-    def __init__(self, ast_node):
-        Node.__init__(self, ast_node)
-
-    def check_assignable_from(self, other, ast_node):
-        if self != other:
-            raise TypeMismatch(self, other, ast_node)
 
 class Value(Expression):
     def __init__(self, value, type, ast_node):
@@ -196,9 +199,9 @@ def create_expression(ast_node, context):
     else:
         raise FatalError('unexpected node', ast_node)
 
-class Function(Node):
+class Function(Expression):
     def __init__(self, ast_node, context):
-        Node.__init__(self, ast_node)
+        Expression.__init__(self, ast_node)
         self.name = ast_node.name
         self.args = [VarDef(arg, context) for arg in ast_node.args]
         if ast_node.return_type:
@@ -219,6 +222,13 @@ class Function(Node):
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
+
+class FuncDef(Definition):
+    def __init__(self, ast_node, context):
+        self.func = Function(ast_node, context)
+
+    def __str__(self):
+        return 'FuncDef(%s)' % self.func
 
 class Context(object):
     def __init__(self, parent):
@@ -285,10 +295,9 @@ class Context(object):
         elif isinstance(ast_node, ast.Var):
             res = VarDef(ast_node, self)
             self.add_term(res.var, ast_node)
-            return res
         elif isinstance(ast_node, ast.Func):
-            res = Function(ast_node, self)
-            self.add_term(res, ast_node)
+            res = FuncDef(ast_node, self)
+            self.add_term(res.func, ast_node)
         else:
             raise FatalError('unexpected node', ast_node)
         return res
