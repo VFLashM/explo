@@ -1,0 +1,5 @@
+var a = { 1 }
+var b: Int = { true 1 }
+//var c = {} //<error type mismatch
+//var d: () = {} //<error type mismatch
+var e: Int = {} //<error type mismatch

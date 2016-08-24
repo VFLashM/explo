@@ -54,11 +54,7 @@ class Func(Definition):
 
     def __str__(self):
         args = ', '.join(map(str, self.args))
-        res = 'Func(%s, [%s]) {\n' % (self.name, args)
-        for statement in self.body:
-            res += '\t' + str(statement) + '\n'
-        res += '}'
-        return res
+        return 'Func(%s, [%s]) %s' % (self.name, args, self.body)
 
 class Call(Expression):
     def __init__(self, callee, args):
@@ -113,7 +109,7 @@ class If(Expression):
         self.on_false = on_false
 
     def __str__(self):
-        return 'If(%s, %s, %s)' % (self.condition, map(str, self.on_true), map(str, self.on_false) if self.on_false else None)
+        return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
 
 class While(Expression):
     def __init__(self, condition, body):
@@ -121,4 +117,18 @@ class While(Expression):
         self.body = body
 
     def __str__(self):
-        return 'While(%s, %s)' % (self.condition, map(str, self.body))
+        return 'While(%s, %s)' % (self.condition, self.body)
+
+class Block(Expression):
+    def __init__(self, statements):
+        self.statements = statements
+
+    def __str__(self):
+        if not self.statements:
+            return '{}'
+        res = '{\n'
+        for statement in self.statements:
+            res += '\t' + str(statement).replace('\n', '\n\t') + '\n'
+        res += '}'
+        return res
+        

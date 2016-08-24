@@ -113,7 +113,8 @@ def p_def_var_typed(p):
 
 def p_block(p):
     '''block : LBRACE statement_list RBRACE'''
-    p[0] = p[2]
+    p[0] = ast.Block(p[2])
+    add_srcmap(p, 1)
     
 def p_def_fn(p):
     '''def : FN ID LPAREN arg_def_list RPAREN block
@@ -137,6 +138,11 @@ def p_expr_int(p):
 def p_expr_float(p):
     '''expr : FLOAT'''
     p[0] = ast.Value(float(p[1]), ast.SimpleType('Float'))
+    add_srcmap(p, 1)
+
+def p_expr_block(p):
+    '''expr : block'''
+    p[0] = p[1]
     add_srcmap(p, 1)
 
 def p_expr_call(p):

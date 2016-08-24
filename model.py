@@ -230,6 +230,8 @@ def create_expression(ast_node, context):
     elif isinstance(ast_node, ast.Value):
         type = context.resolve_type(ast_node.type)
         return Value(ast_node.value, type, ast_node)
+    elif isinstance(ast_node, ast.Block):
+        return Block(ast_node, context)
     else:
         raise FatalError('unexpected node', ast_node)
 
@@ -248,7 +250,7 @@ class Function(Node):
         for arg in self.args:
             self.body.names.add(arg.var.name)
             self.body.terms[arg.var.name] = arg.var
-        for st in ast_node.body:
+        for st in ast_node.body.statements:
             self.body.add_statement(st)
         if self.return_type:
             check_type_compatible(self.return_type, self.body.type, ast_node)
@@ -341,12 +343,12 @@ class Context(object):
         return res
 
 class Block(Expression, Context):
-    def __init__(self, statements, parent):
+    def __init__(self, ast_node, parent):
         Context.__init__(self, parent)
         self.statements = []
         self.type = None
-        if statements:
-            for st in statements:
+        if ast_node:
+            for st in ast_node.statements:
                 self.add_statement(st)
 
     def add_statement(self, ast_node):
