@@ -9,15 +9,17 @@ def compile(src, dst):
     subprocess.check_call(['gcc', src, '-o', dst, '-I.'])
 
 def run_c(src, prefix=''):
-    fd, out = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled')
+    fd, binary = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled')
     try:
         os.close(fd)
-        compile(src, out)
-        rc = subprocess.call([out])
-        if rc < 0:
-            raise error.ExecutionError('signal')
+        compile(src, binary)
+        p = subprocess.Popen([binary], stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if p.returncode < 0:
+            raise error.ExecutionError(err)
+        return p.returncode
     finally:
-        os.remove(out)
+        os.remove(binary)
 
 def run_model(m, prefix=''):
     code = tempfile.NamedTemporaryFile(prefix=prefix + '_', suffix='_transpiled.c')

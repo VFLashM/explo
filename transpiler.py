@@ -3,10 +3,11 @@ import model
 import interpreter
 
 class Flags(object):
-    __slots__ = ('in_function', 'in_loop', 'top_level')
+    __slots__ = ('in_function', 'in_loop', 'block_output')
     def __init__(self):
         for s in self.__slots__:
             setattr(self, s, False)
+        self.block_output = None
 
 class State(object):
     def __init__(self, stream):
@@ -49,16 +50,18 @@ def Node_transpile(self, tstate):
     raise NotImplementedError(type(self))
 
 def Block_transpile(self, tstate, mode='program'):
-    top_level = tstate.flags.top_level
-    with flags(tstate, top_level=False):
-        tstate.line('{')
-        with indent(tstate):
-            for idx, st in enumerate(self.statements):
-                if top_level and tstate.flags.in_function and idx+1 == len(self.statements):
+    tstate.line('{')
+    with indent(tstate):
+        for idx, st in enumerate(self.statements):
+            if idx+1 == len(self.statements):
+                if tstate.flags.block_output == True:
                     tstate.string('return')
-                st.transpile(tstate)
-                tstate.line(';')
-        tstate.line('}')
+                elif tstate.flags.block_output:
+                    tstate.string(tstate.flags.block_output)
+                    tstate.string('=')
+            st.transpile(tstate)
+            tstate.line(';')
+    tstate.line('}')
 
 def Program_transpile(self, tstate):
     tstate.line('#include "builtins.h"')
@@ -66,14 +69,31 @@ def Program_transpile(self, tstate):
         st.transpile(tstate)
 
 def VarDef_transpile(self, tstate):
+    if self.var.readonly:
+        tstate.string('const')
     self.var.type.transpile(tstate)
     tstate.string(self.var.name)
     if self.value:
         tstate.string('=')
         self.value.transpile(tstate)
+    tstate.line(';')
     
 def Type_transpile(self, tstate):
     tstate.string(self.name)
+
+def TypeDef_transpile(self, tstate):
+    tstate.string('typedef enum')
+    tstate.string('{')
+    for idx, value in enumerate(self.type.values):
+        if idx != 0:
+            tstate.string(',')
+        tstate.string(value.value)
+    if not self.type.values:
+        tstate.string('empty')
+    tstate.string('}')
+    tstate.string(self.type.name)
+    tstate.line(';')
+    
 
 def Value_transpile(self, tstate):
     if isinstance(self.value, bool):
@@ -137,6 +157,7 @@ model.Node.transpile = Node_transpile
 model.Block.transpile = Block_transpile
 model.VarDef.transpile = VarDef_transpile
 model.Type.transpile = Type_transpile
+model.TypeDef.transpile = TypeDef_transpile
 model.Value.transpile = Value_transpile
 model.Program.transpile = Program_transpile
 model.FuncDef.transpile = FuncDef_transpile

@@ -79,6 +79,9 @@ def Function_execute(self, state):
 def FuncDef_execute(self, state):
     pass
 
+def TypeDef_execute(self, state):
+    pass
+
 def Function_call(self, state, args):
     fnstate = State(state)
     for avardef, avalue in zip(self.args, args):
@@ -103,6 +106,7 @@ model.If.execute = If_execute
 model.While.execute = While_execute
 model.Function.execute = Function_execute
 model.FuncDef.execute = FuncDef_execute
+model.TypeDef.execute = TypeDef_execute
 model.Function.call = Function_call
 model.Block.execute = Block_execute
 

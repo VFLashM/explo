@@ -52,6 +52,13 @@ class Type(Node):
         if self != other:
             raise TypeMismatch(self, other, ast_node)
 
+class TypeDef(Definition):
+    def __init__(self, ast_node, context):
+        self.type = Enum(ast_node, context)
+        
+    def __str__(self):
+        return 'TypeDef(%s)' % self.type
+
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
@@ -284,9 +291,9 @@ class Context(object):
 
     def add_def(self, ast_node):
         if isinstance(ast_node, ast.Enum):
-            res = Enum(ast_node, self)
-            self.add_type(res, ast_node)
-            for value in res.values:
+            res = TypeDef(ast_node, self)
+            self.add_type(res.type, ast_node)
+            for value in res.type.values:
                 self.add_term(value, ast_node, value.value)
         elif isinstance(ast_node, ast.TypeAlias):
             alias = self.resolve_type(ast_node.target)

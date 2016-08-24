@@ -58,7 +58,7 @@ class Builtins(model.Context):
         self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
         self.add_function('abort', [], None, abort)
         
-        bool_type = self.add_def(ast.Enum('Bool', ['false', 'true']))
+        bool_type = self.add_def(ast.Enum('Bool', ['false', 'true'])).type
         for v in bool_type.values:
             v.value = v.value == 'true'
         self.add_function('and', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] and args[1])

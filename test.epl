@@ -1,14 +1,11 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
+var a = { 1 }
+var b: Int = { true 1 }
+
 fn main() {
-   var i = 10
-   while not(ieq(i, 0)) {
-      if ieq(div(i, 5), 0) {
-        print(i)
-      } else {
-        print(-1)
-      }
-      if ieq(i, 1) {
-         print(1)
-      }
-      i = sub(i, 1)
-   }
+   var a = { 12 }
+   assert(ieq(a, 12))
+   var b = { true }
+   assert(b)
 }
