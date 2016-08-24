@@ -331,16 +331,19 @@ class Program(Block):
         return '\n'.join(map(str, self.statements))
 
 if __name__ == '__main__':
-    import sys
     import logging
     logging.basicConfig(level=logging.DEBUG)
 
     import model # sigh, import self to have matching classes in builtins and here
     import parse
     import builtins
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    args = parser.parse_args()
     
-    path = sys.argv[1]
-    content = open(path).read()
+    content = open(args.path).read()
     
     program = parse.parse(content)
     b = builtins.Builtins()

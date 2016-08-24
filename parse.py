@@ -215,12 +215,13 @@ def parse(content, debug=False):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    import sys
-    for path in sys.argv[1:]:
-        content = open(path).read()
 
-        parse(content, True)
-        print
-        print
-        program = parse(content)
-        print program
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
+    
+    content = open(args.path).read()
+    program = parse(content, args.debug)
+    print program

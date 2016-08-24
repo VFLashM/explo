@@ -127,9 +127,13 @@ if __name__ == '__main__':
     import sys
     import logging
     logging.basicConfig(level=logging.DEBUG)
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    args = parser.parse_args()
     
-    path = sys.argv[1]
-    content = open(path).read()
+    content = open(args.path).read()
 
     m = build_model(content)
     rc = run_model(m)

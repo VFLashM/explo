@@ -1,6 +1,9 @@
 import interpreter
 import transpiler
 
+def compile(src, dst):
+    subprocess.check_call(['gcc', src, '-o', dst, '-I.'])
+
 if __name__ == '__main__':
     import os
     import sys
@@ -8,9 +11,15 @@ if __name__ == '__main__':
     import tempfile
     import subprocess
     logging.basicConfig(level=logging.DEBUG)
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    parser.add_argument('-o', '--output')
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
     
-    path = sys.argv[1]
-    content = open(path).read()
+    content = open(args.path).read()
 
     code = tempfile.NamedTemporaryFile(suffix='_transpiled.c')
     m = interpreter.build_model(content)
@@ -18,18 +27,19 @@ if __name__ == '__main__':
     m.transpile(tstate)
     code.flush()
 
-    # code.seek(0)
-    # print code.read()
+    if args.debug:
+        code.seek(0)
+        print code.read()
 
-    fd, out = tempfile.mkstemp(suffix='_compiled')
-    os.close(fd)
-    try:
-        subprocess.check_call(['gcc', code.name, '-o', out, '-I.'])
-        rc = subprocess.call([out])
-    except subprocess.CalledProcessError as e:
-        print e
-        sys.exit(e.returncode)
-    finally:
-        if os.path.exists(out):
-            os.remove(out)
-    sys.exit(rc)
+    if args.output is None:
+        fd, out = tempfile.mkstemp(suffix='_compiled')
+        os.close(fd)
+        try:
+            compile(code.name, out)
+            rc = subprocess.call([out])
+        finally:
+            if os.path.exists(out):
+                os.remove(out)
+        sys.exit(rc)
+    else:
+        compile(code.name, args.output)

@@ -72,38 +72,42 @@ def lexer():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    import sys
     
-    for path in sys.argv[1:]:
-        content = open(path).read()
-        
-        l = lexer()
-        l.input(content)
-        while True:
-            tok = l.token()
-            if not tok:
-                sys.stdout.write('\n')
-                break
-        if l.errors:
-            continue
+    import sys
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    args = parser.parse_args()
+    
+    content = open(args.path).read()
 
-        l = lexer()
-        l.input(content)
-        lines = content.splitlines()
-        last_line = None
-        while True:
-            tok = l.token()
-            if not tok:
-                sys.stdout.write('\n')
-                break
-            if last_line != tok.lineno:
-                last_line = tok.lineno
-                sys.stdout.write('\n')
-                line = lines[tok.lineno - 1]
-                prefix = len(line) - len(line.lstrip())
-                sys.stdout.write(' ' * prefix)
-            else:
-                sys.stdout.write(' ')
-            sys.stdout.write('%s(%r)' % (tok.type, tok.value))
-        
-        
+    l = lexer()
+    l.input(content)
+    while True:
+        tok = l.token()
+        if not tok:
+            sys.stdout.write('\n')
+            break
+    if l.errors:
+        sys.exit(1)
+
+    l = lexer()
+    l.input(content)
+    lines = content.splitlines()
+    last_line = None
+    while True:
+        tok = l.token()
+        if not tok:
+            sys.stdout.write('\n')
+            break
+        if last_line != tok.lineno:
+            last_line = tok.lineno
+            sys.stdout.write('\n')
+            line = lines[tok.lineno - 1]
+            prefix = len(line) - len(line.lstrip())
+            sys.stdout.write(' ' * prefix)
+        else:
+            sys.stdout.write(' ')
+        sys.stdout.write('%s(%r)' % (tok.type, tok.value))
+
+
