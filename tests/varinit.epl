@@ -1,0 +1,13 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
+var inited: Int = 3
+var not_inited: Int
+
+fn main() {
+   var ok = inited
+   var other = not_inited //<runtime variable not initialized
+   assert(ieq(ok, 3))
+   not_inited = 4
+   var now_fine = not_inited
+   assert(ieq(now_fine, 4))
+}
