@@ -62,6 +62,7 @@ class Var(Node):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
         self.name = ast_node.name
+        self.readonly = ast_node.readonly
         if ast_node.type is not None:
             self.type = context.resolve_type(ast_node.type)
         else:
@@ -170,6 +171,8 @@ class Assignment(Expression):
             raise ModelError('Destination is not assignable: %s' % self.destination, ast_node)
         self.value = create_expression(ast_node.value, context)
         check_type_compatible(self.destination.type, self.value.type, ast_node)
+        if self.destination.readonly:
+            raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
