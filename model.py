@@ -186,6 +186,9 @@ class If(Expression):
         else:
             self.on_false = None
 
+        if self.on_false and self.on_true.type == self.on_false.type:
+            self.type = self.on_true.type
+
     def __str__(self):
         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
 
@@ -248,7 +251,7 @@ class Function(Node):
         for st in ast_node.body:
             self.body.add_statement(st)
         if self.return_type:
-            check_type_compatible(self.return_type, self.body.return_type, ast_node)
+            check_type_compatible(self.return_type, self.body.type, ast_node)
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
@@ -337,11 +340,11 @@ class Context(object):
             raise FatalError('unexpected node', ast_node)
         return res
 
-class Block(Context):
+class Block(Expression, Context):
     def __init__(self, statements, parent):
         Context.__init__(self, parent)
         self.statements = []
-        self.return_type = None
+        self.type = None
         if statements:
             for st in statements:
                 self.add_statement(st)
@@ -351,7 +354,7 @@ class Block(Context):
             res = self.add_def(ast_node)
         else:
             res = create_expression(ast_node, self)
-            self.return_type = res.type
+            self.type = res.type
         if res is not None:
             self.statements.append(res)
 

@@ -6,8 +6,13 @@ fn test_if() {
       print(0)
    }
    if true {}
+
+   var i: Int = if true { 1 } else { 0 }
+   
    if 1 {} //<error type mismatch
    if print(1) {} //<error type mismatch
+   var i2: Int = if true { 1 } //<error type mismatch
+   var i3: Int = if true { 1 } else { true } //<error type mismatch
 }
 
 fn test_if_else() {
