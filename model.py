@@ -205,16 +205,17 @@ class Function(Node):
             self.return_type = context.resolve_type(ast_node.return_type)
         else:
             self.return_type = None
-        arg_types = [arg.var.type for arg in self.args]
-        self.type = FuncType(arg_types, self.return_type)
-        self.body = Block(None, context)
+
+        arg_context = Context(context)
         for arg in self.args:
-            self.body.names.add(arg.var.name)
-            self.body.terms[arg.var.name] = arg.var
-        for st in ast_node.body.statements:
-            self.body.add_statement(st)
+            arg_context.add_term(arg.var, None)
+            
+        self.body = Block(ast_node.body, arg_context)
         if self.return_type:
             self.return_type.check_assignable_from(self.body.type, ast_node)
+
+        arg_types = [arg.var.type for arg in self.args]
+        self.type = FuncType(arg_types, self.return_type)
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
