@@ -18,18 +18,18 @@ class ModelError(SyntaxError):
 
 class TypeMismatch(ModelError):
     def __init__(self, expected, got, ast_node):
-        ModelError.__init__(self, 'type mismatch', ast_node)
+        ModelError.__init__(self, 'type mismatch %s vs %s' % (expected, got), ast_node)
         self.expected = expected
         self.got = got
 
 class AlreadyDefined(ModelError):
     def __init__(self, name, ast_node):
-        ModelError.__init__(self, 'already defined', ast_node)
+        ModelError.__init__(self, 'already defined name: %s' % name, ast_node)
         self.name = name
 
 class Undefined(ModelError):
     def __init__(self, name, ast_node):
-        ModelError.__init__(self, 'undefined', ast_node)
+        ModelError.__init__(self, 'undefined name: %s' % name, ast_node)
         self.name = name
 
 class FatalError(ModelError):
@@ -105,14 +105,14 @@ class Type(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
 
-class EnumValue(Expression):
-    def __init__(self, parent, name):
-        Expression.__init__(self, parent.ast_node)
-        self.type = parent
-        self.name = name
+class Value(Expression):
+    def __init__(self, value, type, ast_node):
+        Expression.__init__(self, ast_node)
+        self.value = value
+        self.type = type
 
     def __str__(self):
-        return 'EnumValue(%s)' % self.name
+        return 'Value(%s, %s)' % (self.value, self.type.name)
 
     def execute(self, state):
         return self
@@ -121,10 +121,10 @@ class Enum(Type):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
         self.name = ast_node.name
-        self.values = [EnumValue(self, value) for value in ast_node.values]
+        self.values = [Value(value, self, ast_node) for value in ast_node.values]
 
     def __str__(self):
-        return 'Enum(%s, %s)' % (self.name, [v.name for v in self.values])
+        return 'Enum(%s, %s)' % (self.name, [v.value for v in self.values])
 
     def execute(self, state):
         pass
@@ -181,6 +181,9 @@ def create_expression(ast_node, context):
         return Call(ast_node, context)
     elif isinstance(ast_node, ast.Assignment):
         return Assignment(ast_node, context)
+    elif isinstance(ast_node, ast.Value):
+        type = context.resolve_type(ast_node.type)
+        return Value(ast_node.value, type, ast_node)
     else:
         raise FatalError('unexpected node', ast_node)
 
@@ -254,11 +257,13 @@ class Context(object):
         else:
             raise FatalError('unexpected node', ast_node)
 
-    def add_term(self, term, ast_node):
-        if term.name in self.names:
-            raise AlreadyDefined(term.name, ast_node)
-        self.names.add(term.name)
-        self.terms[term.name] = term
+    def add_term(self, term, ast_node, name=None):
+        if name is None:
+            name = term.name
+        if name in self.names:
+            raise AlreadyDefined(name, ast_node)
+        self.names.add(name)
+        self.terms[name] = term
 
     def add_type(self, type, ast_node, name=None):
         if name is None:
@@ -273,7 +278,7 @@ class Context(object):
             res = Enum(ast_node, self)
             self.add_type(res, ast_node)
             for value in res.values:
-                self.add_term(value, ast_node)
+                self.add_term(value, ast_node, value.value)
         elif isinstance(ast_node, ast.TypeAlias):
             alias = self.resolve_type(ast_node.target)
             self.add_type(alias, ast_node, ast_node.name)
@@ -316,39 +321,62 @@ class Block(Context):
             res = st.execute(state)
         return res
 
-class BuiltinFunction(Function):
-    def __init__(self, name, arg_types, return_type, context):
+class BuiltinFunction(Node):
+    def __init__(self, name, arg_types, return_type, impl, context):
+        self.name = name
         arg_names = [chr(ord('a') + idx) for idx in range(len(arg_types))]
         arg_ast_nodes = []
         for arg_name, type_name in zip(arg_names, arg_types):
             arg_ast_node = ast.Var(arg_name, ast.SimpleType(type_name))
             arg_ast_nodes.append(arg_ast_node)
+        self.args = [VarDef(arg_ast_node, context) for arg_ast_node in arg_ast_nodes]
         if return_type:
-            return_type = ast.SimpleType(return_type)
-        ast_node = ast.Func(name, arg_ast_nodes, return_type, [])
-        
-        Function.__init__(self, ast_node, context)
-        self.body = None
+            self.return_type = context.resolve_type(ast.SimpleType(return_type))
+        else:
+            self.return_type = None
+        arg_types = [arg.var.type for arg in self.args]
+        self.type = FuncType(arg_types, self.return_type)
+        self.impl = impl
+
+    def execute(self, state):
+        return self
 
     def call(self, state, args):
-        raise NotImplementedError(type(self))
+        arg_values = [arg.value for arg in args]
+        ret_value = self.impl(state, arg_values)
+        if self.return_type:
+            return Value(ret_value, self.return_type, None)
 
 class BuiltinType(Type):
     def __init__(self, name):
         self.name = name
 
-class PrintBuiltin(BuiltinFunction):
-    def __init__(self, context):
-        BuiltinFunction.__init__(self, 'print', ['Any'], None, context)
-
-    def call(self, state, args):
-        print args[0]
-
 class Builtins(Context):
     def __init__(self):
         Context.__init__(self, None)
+        
         self.add_type(BuiltinType('Any'), None)
-        self.add_term(PrintBuiltin(self), None)
+        self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
+
+        self.add_def(ast.Enum('Bool', ['false', 'true']))
+        self.add_function('and', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] and args[1])
+        self.add_function('or', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] or args[1])
+        self.add_function('xor', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
+        self.add_function('not', ['Bool'], 'Bool', lambda x, args: not args[0])
+        self.add_function('beq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] == args[1])
+        
+        self.add_type(BuiltinType('Int'), None)
+        self.add_function('add', ['Int', 'Int'], 'Int', lambda x, args: args[0] + args[1])
+        self.add_function('sub', ['Int', 'Int'], 'Int', lambda x, args: args[0] - args[1])
+        self.add_function('mul', ['Int', 'Int'], 'Int', lambda x, args: args[0] * args[1])
+        self.add_function('div', ['Int', 'Int'], 'Int', lambda x, args: args[0] / args[1])
+        self.add_function('ieq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] == args[1])
+        
+        
+
+    def add_function(self, name, args, return_type, impl):
+        fn = BuiltinFunction(name, args, return_type, impl, self)
+        self.add_term(fn, None)
 
 class State(object):
     def __init__(self, parent=None):

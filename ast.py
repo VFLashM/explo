@@ -98,3 +98,11 @@ class Tuple(Type):
     def __str__(self):
         return 'Tuple(%s)' % ', '.join(map(str, self.members))
 
+class Value(Expression):
+    def __init__(self, value, type):
+        self.value = value
+        self.type = type
+
+    def __str__(self):
+        return 'Value(%s, %s)' % (self.value, self.type)
+

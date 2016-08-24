@@ -26,7 +26,7 @@ def check(path):
     bad_line_indices = []
         
     for idx, line in enumerate(lines):
-        if '//<error' in line:
+        if '//<error' in line and not line.strip().startswith('//'):
             bad_line_indices.append(idx)
         else:
             good_lines.append(line)
@@ -63,7 +63,7 @@ def check_all(root):
             check(path)
             logger.info('SUCCESS: %s', path)
         except TestFailure as e:
-            logger.info('FAILURE: %s %s %s', path, type(e), e)
+            logger.warn('FAILURE: %s %s %s', path, type(e), e)
             success = False
     return success
 

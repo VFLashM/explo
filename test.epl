@@ -20,6 +20,7 @@ fn get_one() {
    one
 }
 fn main() -> Nat {
+  print(add(1,5))
   let a = first(one, two)
   twovar = a
   print(twovar)

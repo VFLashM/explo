@@ -121,9 +121,19 @@ def p_def_fn(p):
         p[0] = ast.Func(p[2], p[4], None, p[7])
     add_srcmap(p, 2)
 
-def p_expr_simple(p):
+def p_expr_term(p):
     '''expr : ID'''
     p[0] = ast.Term(p[1])
+    add_srcmap(p, 1)
+
+def p_expr_int(p):
+    '''expr : INT'''
+    p[0] = ast.Value(int(p[1]) , ast.SimpleType('Int'))
+    add_srcmap(p, 1)
+
+def p_expr_float(p):
+    '''expr : FLOAT'''
+    p[0] = ast.Value(float(p[1]), ast.SimpleType('Float'))
     add_srcmap(p, 1)
 
 def p_expr_call(p):

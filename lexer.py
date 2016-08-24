@@ -22,6 +22,8 @@ tokens = (
     'COLON',
     'EQ',
     'ARROW',
+    'INT',
+    'FLOAT',
     ) + tuple(k.upper() for k in keywords)
 
 t_LPAREN  = r'\('
@@ -34,6 +36,8 @@ t_LESS  = r'\<'
 t_GREATER = r'\>'
 t_EQ = r'='
 t_ARROW = '->'
+t_INT = r'\-?[0-9]+'
+t_FLOAT = r'\-?[0-9]+\.[0-9]+'
 t_ignore = '\t '
 
 def t_ID(t):
