@@ -4,7 +4,7 @@ import model
 import error
 
 class BuiltinFunction(model.Node):
-    def __init__(self, name, arg_types, return_type, impl, context):
+    def __init__(self, name, arg_types, return_type, impl, ex_mode, context):
         model.Node.__init__(self, None)
         self.name = name
         arg_names = [chr(ord('a') + idx) for idx in range(len(arg_types))]
@@ -20,6 +20,7 @@ class BuiltinFunction(model.Node):
         arg_types = [arg.var.type for arg in self.args]
         self.type = model.FuncType(arg_types, self.return_type)
         self.impl = impl
+        self.ex_mode = ex_mode
 
     def execute(self, state):
         return self
@@ -55,8 +56,8 @@ class Builtins(model.Context):
             raise error.InterpreterError('abort')
         
         self.add_type(BuiltinAnyType(), None)
-        self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'))
-        self.add_function('abort', [], None, abort)
+        self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'), model.ExecutionMode.runtime)
+        self.add_function('abort', [], None, abort, model.ExecutionMode.runtime)
         
         bool_type = self.add_def(ast.Enum('Bool', ['false', 'true'])).type
         for v in bool_type.values:
@@ -81,6 +82,6 @@ class Builtins(model.Context):
         self.add_function('lt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] < args[1])
         self.add_function('leq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] <= args[1])
 
-    def add_function(self, name, args, return_type, impl):
-        fn = BuiltinFunction(name, args, return_type, impl, self)
+    def add_function(self, name, args, return_type, impl, ex_mode=model.ExecutionMode.compile):
+        fn = BuiltinFunction(name, args, return_type, impl, ex_mode, self)
         self.add_term(fn, None)

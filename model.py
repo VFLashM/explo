@@ -2,6 +2,18 @@
 import ast
 import error
 
+class ExecutionMode(str):
+    @staticmethod
+    def worst(old, new):
+        if old == ExecutionMode.compile or new == ExecutionMode.runtime:
+            return new
+        else:
+            return old
+
+ExecutionMode.compile = ExecutionMode('compile')
+ExecutionMode.dual = ExecutionMode('dual')
+ExecutionMode.runtime = ExecutionMode('runtime')
+
 class ModelError(error.SyntaxError):
     def __init__(self, message, ast_node):
         error.SyntaxError.__init__(self, message)
@@ -35,12 +47,17 @@ class FatalError(ModelError):
 
 class KindMismatch(ModelError):
     def __init__(self, name, ast_node):
-        ModelError.__init__(self, ast_node, 'kind mismatch')
+        ModelError.__init__(self, 'kind mismatch', ast_node)
         self.name = name
+
+class NotCompileTime(ModelError):
+    def __init__(self, expr):
+        ModelError.__init__(self, 'not compile time:\n%s' % expr, expr.ast_node)
 
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
+        self.ex_mode = None
 
 class Definition(Node):
     pass
@@ -88,12 +105,15 @@ class VarDef(Definition):
                 self.var.type = self.value.type
             else:
                 self.var.type.check_assignable_from(self.value.type, ast_node)
+            self.ex_mode = self.value.ex_mode
         else:
             self.value = None
             if self.var.type is None:
                 raise ModelError('No type specified', ast_node)
+            self.ex_mode = ExecutionMode.compile
         if ast_node.type:
             self.type = context.resolve_type(ast_node.type)
+        
 
     def __str__(self):
         return 'VarDef(%s = %s)' % (self.var, self.value)
@@ -103,6 +123,7 @@ class Value(Expression):
         Expression.__init__(self, ast_node)
         self.value = value
         self.type = type
+        self.ex_mode = ExecutionMode.compile
 
     def __str__(self):
         return 'Value(%s, %s)' % (self.value, self.type.name)
@@ -130,6 +151,7 @@ class Tuple(Type):
 
 class Call(Expression):
     def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
         self.callee = create_expression(ast_node.callee, context)
         self.args = [create_expression(arg, context) for arg in ast_node.args]
         if not isinstance(self.callee.type, FuncType):
@@ -140,9 +162,10 @@ class Call(Expression):
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
             exp_type.check_assignable_from(got_arg.type, ast_node)
         self.type = self.callee.type.return_type
-
+        self.ex_mode = self.callee.ex_mode
+        
     def __str__(self):
-        return 'Call(%s, %s)' % (self.callee.name, map(str, self.args))
+        return 'Call[%s](%s, %s)' % (self.ex_mode, self.callee.name, map(str, self.args))
 
 class Assignment(Expression):
     def __init__(self, ast_node, context):
@@ -234,6 +257,7 @@ class Function(Expression):
 class FuncDef(Definition):
     def __init__(self, ast_node, context):
         self.func = Function(ast_node, context)
+        self.ex_mode = ExecutionMode.compile
 
     def __str__(self):
         return 'FuncDef(%s)' % self.func
@@ -313,11 +337,15 @@ class Context(object):
 class Block(Expression, Context):
     def __init__(self, ast_node, parent):
         Context.__init__(self, parent)
+        Expression.__init__(self, ast_node)
         self.statements = []
         self.type = None
+        self.ex_mode = ExecutionMode.compile
         if ast_node:
             for st in ast_node.statements:
-                self.add_statement(st)
+                res = self.add_statement(st)
+                if res:
+                    self.ex_mode = ExecutionMode.worst(self.ex_mode, res.ex_mode)
 
     def add_statement(self, ast_node):
         if isinstance(ast_node, ast.Definition):
@@ -327,14 +355,20 @@ class Block(Expression, Context):
             self.type = res.type
         if res is not None:
             self.statements.append(res)
+        return res
 
     def _indent(self, text):
         return '\n'.join('\t' + line for line in text.splitlines())
 
     def __str__(self):
-        return 'Block {\n%s\n}' % '\n'.join(self._indent(str(st)) for st in self.statements)
+        return 'Block[%s] {\n%s\n}' % (self.ex_mode, '\n'.join(self._indent(str(st)) for st in self.statements))
 
 class Program(Block):
+    def __init__(self, *args, **kwargs):
+        Block.__init__(self, *args, **kwargs)
+        if self.ex_mode != ExecutionMode.compile:
+            raise NotCompileTime(self)
+    
     def __str__(self):
         return '\n'.join(map(str, self.statements))
 
