@@ -72,7 +72,10 @@ class Var(Node):
         return 'Var(%s, %s)' % (self.name, self.type.name)
 
     def execute(self, state):
-        return state[self.name]
+        res = state[self.name]
+        if res is None:
+            raise RuntimeError('variable not initialized: %s' % self.name)
+        return res
 
 class VarDef(Node):
     def __init__(self, ast_node, context):
