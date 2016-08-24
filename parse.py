@@ -222,5 +222,5 @@ if __name__ == '__main__':
         parse(content, True)
         print
         print
-        defs = parse(content)
-        print '\n'.join(map(str, defs))
+        program = parse(content)
+        print program
