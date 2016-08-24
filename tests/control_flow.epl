@@ -1,3 +1,5 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+
 fn test_if() {
    if ieq(1, 2) {
       print(0)
@@ -34,4 +36,40 @@ fn test_while() {
 
    while 1 {} //<error type mismatch
    while print(1) {} //<error type mismatch
+}
+
+fn main() {
+   if true {
+      abort() //<runtime abort
+   } else {
+      abort()
+   }
+   if false {
+      abort()
+   } else {
+      abort() //<runtime abort
+   }
+   if true {
+      abort() //<runtime abort
+   }
+   if false {
+      abort()
+   }
+
+   var i1 = if true { 1 } else { 2 }
+   var i2 = if false { 1 } else { 2 }
+   assert(ieq(i1, 1))
+   assert(ieq(i2, 2))
+
+   while false {
+     abort()
+   }
+
+   var cnt = 10
+   var inc = 0
+   while ineq(cnt, 0) {
+     inc = add(inc, 2)
+     cnt = sub(cnt, 1)
+   }
+   assert(ieq(inc, 20))
 }

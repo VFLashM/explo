@@ -1,14 +1,11 @@
-enum Bool { true, false }
-enum Void {}
-enum Nat { one, two, three }
+fn assert(c: Bool) { if not(c) { abort() } }
 
 fn truefn() -> Bool { true }
 
-fn first(a: Bool, b: Bool) {
+fn first(a: Int, b: Int) -> Int {
    a
 }
-fn second(a: Bool, b: Bool) {
-   truefn()
+fn second(a: Int, b: Int) -> Int {
    first(b, a)
 }
 fn assign(a: Bool) -> Bool {
@@ -17,8 +14,16 @@ fn assign(a: Bool) -> Bool {
    b
 }
 
-fn mismatch1() -> Void { true } //<error type mismatch
+fn mismatch1() -> Int { true } //<error type mismatch
 fn mismatch2() -> Bool {} //<error type mismatch
 fn mismatch3() -> Bool { var a: Bool a = true } //<error type mismatch
-fn mismatch4() { first(true, one) }  //<error type mismatch
-fn undefined() { unknown(true) }  //<error undefined
+fn mismatch4() { first(true, 1) } //<error type mismatch
+fn undefined() { unknown(true) } //<error undefined
+
+fn main() {
+   assert(truefn())
+   assert(ieq(1, first(1, 2)))
+   assert(ieq(2, second(1, 2)))
+   assert(assign(true))
+   assert(not(assign(false)))
+}
