@@ -469,12 +469,14 @@ def build(content):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     import sys
-    for path in sys.argv[1:]:
-        content = open(path).read()
-        p = build(content)
-        print p
-        print
-        state = State()
-        p.execute(state)
-        main = p.resolve_term('main', None)
-        main.call(state, [])
+    path = sys.argv[1]
+    content = open(path).read()
+    p = build(content)
+    print p
+    print
+    state = State()
+    p.execute(state)
+    main = p.resolve_term('main', None)
+    res = main.call(state, [])
+    if res and res.type.name == 'Int':
+        sys.exit(res.value)
