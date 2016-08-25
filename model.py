@@ -72,6 +72,7 @@ class Type(Node):
 
 class TypeDef(Definition):
     def __init__(self, ast_node, context):
+        Definition.__init__(self, ast_node)
         self.type = Enum(ast_node, context)
         
     def __str__(self):

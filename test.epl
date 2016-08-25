@@ -1,5 +1,7 @@
-let i = { true add(1, 2) }
+let a = 3
+let b = add(1, a)
+var i = { true add(a, b) }
 
 fn main() {
-   print(i)
+   //print(i)
 }

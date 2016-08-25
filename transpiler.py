@@ -54,6 +54,7 @@ class State(object):
         for key in self.flags:
             setattr(self, key, False)
         self.temp_idx = 0
+        self.istate = interpreter.State()
 
     def temp_var(self, name, type, output):
         self.temp_idx += 1
@@ -79,9 +80,19 @@ class State(object):
 def Node_transpile(self, tstate, prelude, body, output):
     raise NotImplementedError(type(self))
 
+def inline(expr, tstate, prelude, body, result):
+    if expr.ex_mode == model.ExecutionMode.compile:
+        res = expr.execute(tstate.istate)
+        res.transpile(tstate, prelude, body, result)
+        return True
+    return False
+
 def Block_transpile(self, tstate, prelude, body, result):
     if not self.statements:
-        self.body.string('{}')
+        body.string('{}')
+        return
+    if inline(self, tstate, prelude, body, result):
+        return True
     if len(self.statements) == 1 and result:
         self.statements[0].transpile(tstate, prelude, body, result)
         return
@@ -119,7 +130,11 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     body.string(self.var.name)
     if self.value:
         body.string('=')
-        self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        inlined = self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        print inlined, self.var.readonly, self
+        if self.var.readonly and inlined:
+            print 'exec', self
+            self.execute(tstate.istate)
     body.line(';')
     
 def Type_transpile(self, tstate, prelude, body, result):
@@ -144,6 +159,7 @@ def Value_transpile(self, tstate, prelude, body, result):
             result.string(str(self.value).lower())
         else:
             result.string(str(self.value))
+    return True
 
 def FuncDef_transpile(self, tstate, prelude, body, result):
     if self.func.return_type:
@@ -171,6 +187,8 @@ def FuncDef_transpile(self, tstate, prelude, body, result):
     body.line('};')
 
 def Var_transpile(self, tstate, prelude, body, result):
+    if inline(self, tstate, prelude, body, result):
+        return True
     result.string(self.name)
 
 def While_transpile(self, tstate, prelude, body, result):
@@ -181,6 +199,8 @@ def While_transpile(self, tstate, prelude, body, result):
         self.body.transpile(tstate, prelude, body, None)
     
 def If_transpile(self, tstate, prelude, body, result):
+    if inline(self, tstate, prelude, body, result):
+        return True
     if result and self.type:
         outvar = tstate.temp_var('if_result', self.type, prelude)
     else:
@@ -218,6 +238,8 @@ def If_transpile(self, tstate, prelude, body, result):
         result.string(outvar)
 
 def Call_transpile(self, tstate, prelude, body, result):
+    if inline(self, tstate, prelude, body, result):
+        return True
     if result is None:
         result = body
     self.callee.transpile(tstate, prelude.inserter(), prelude.inserter(), result)
