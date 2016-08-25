@@ -5,6 +5,8 @@ import error
 class ExecutionMode(str):
     @staticmethod
     def worst(old, new):
+        assert new is not None
+        assert old is not None
         if old == ExecutionMode.compile or new == ExecutionMode.runtime:
             return new
         else:
@@ -197,6 +199,10 @@ class If(Expression):
 
         if self.on_false and self.on_true.type == self.on_false.type:
             self.type = self.on_true.type
+            
+        self.ex_mode = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
+        if self.on_false:
+            self.ex_mode = ExecutionMode.worst(self.ex_mode, self.on_false.ex_mode)
 
     def __str__(self):
         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
@@ -251,6 +257,7 @@ class Function(Expression):
 
         arg_types = [arg.var.type for arg in self.args]
         self.type = FuncType(arg_types, self.return_type)
+        self.ex_mode = self.body.ex_mode
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
