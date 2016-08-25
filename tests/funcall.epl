@@ -24,6 +24,10 @@ fn print_one() {
    print_int(1)
 }
 
+fn voidarg(a: ()) {
+   a
+}
+
 fn mismatch1() -> Int { true } //<ModelError type mismatch
 fn mismatch2() -> Bool {} //<ModelError type mismatch
 fn mismatch3() -> Bool { var a: Bool a = true } //<ModelError type mismatch
@@ -38,4 +42,5 @@ fn main() {
    assert(not(assign(false)))
    print_int(4) //<Output 4
    print_one() //<Output 1
+   voidarg(voidarg(voidarg()))
 }
