@@ -209,6 +209,10 @@ class Assignment(Expression):
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
 
+    @property
+    def ex_mode(self):
+        return ExecutionMode.worst(self.value.ex_mode, self.destination.ex_mode)
+
 class If(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
@@ -245,6 +249,10 @@ class While(Expression):
 
     def __str__(self):
         return 'While(%s, %s)' % (self.condition, self.body)
+
+    @property
+    def ex_mode(self):
+        return ExecutionMode.worst(self.condition.ex_mode, self.body.ex_mode)
 
 def create_expression(ast_node, context):
     if isinstance(ast_node, ast.Term):
