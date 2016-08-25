@@ -343,8 +343,11 @@ class Context(object):
                 raise KindMismatch(name, ast_node)
             return self.types[name]
         elif isinstance(ast_node, ast.Tuple):
-            members = [self.resolve_type(member) for member in ast_node.members]
-            return Tuple(members)
+            if ast_node.members:
+                members = [self.resolve_type(member) for member in ast_node.members]
+                return Tuple(members)
+            else:
+                return None
         else:
             raise FatalError('unexpected node', ast_node)
 
