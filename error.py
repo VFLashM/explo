@@ -1,8 +1,23 @@
 class BaseError(Exception):
     pass
 
-class SyntaxError(BaseError):
+class CompileTimeError(BaseError):
     pass
 
-class InterpreterError(BaseError):
+class ExecutionTimeError(BaseError):
+    pass
+
+class CodeSyntaxError(CompileTimeError):
+    pass
+
+class TranspilerError(CompileTimeError):
+    pass
+
+class CompilerError(CompileTimeError):
+    pass
+
+class InterpreterError(ExecutionTimeError):
+    pass
+
+class BinaryExecutionError(ExecutionTimeError):
     pass
