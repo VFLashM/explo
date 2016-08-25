@@ -1,7 +1,13 @@
 #!env python2.7
+import sys
 import contextlib
 import model
 import interpreter
+import error
+
+class InlinerError(error.CompileTimeError):
+    def __init__(self, cause):
+        self.cause = cause
 
 class Output(object):
     def __init__(self, indent=False):
@@ -82,7 +88,10 @@ def Node_transpile(self, tstate, prelude, body, output):
 
 def inline(expr, tstate, prelude, body, result):
     if expr.ex_mode == model.ExecutionMode.compile:
-        res = expr.execute(tstate.istate)
+        try:
+            res = expr.execute(tstate.istate)
+        except error.InterpreterError as e:
+            raise InlinerError(e), None, sys.exc_info()[2]
         res.transpile(tstate, prelude, body, result)
         return True
     return False

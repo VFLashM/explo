@@ -5,7 +5,7 @@ import lexer
 import logging
 import error
 
-class ParserError(error.SyntaxError):
+class ParserError(error.CodeSyntaxError):
     pass
 
 logger = logging.getLogger('parser')

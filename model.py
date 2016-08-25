@@ -16,9 +16,9 @@ ExecutionMode.compile = ExecutionMode('compile')
 ExecutionMode.dual = ExecutionMode('dual')
 ExecutionMode.runtime = ExecutionMode('runtime')
 
-class ModelError(error.SyntaxError):
+class ModelError(error.CodeSyntaxError):
     def __init__(self, message, ast_node):
-        error.SyntaxError.__init__(self, message)
+        error.CodeSyntaxError.__init__(self, message)
         self.ast_node = ast_node
 
     def __str__(self):

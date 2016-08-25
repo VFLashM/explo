@@ -11,17 +11,11 @@ if os.name == 'nt':
 else:
     EXT = ''
 
-class ExecutionError(error.BaseError):
-    pass
-
-class CompilationError(error.BaseError):
-    pass
-    
 def compile(src, dst):
     try:
         subprocess.check_call(['gcc' + EXT, src, '-o', dst, '-I.'])
     except subprocess.CalledProcessError:
-        raise CompilationError()
+        raise error.CompilerError()
 
 def run_c(src, prefix=''):
     fd, binary = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled' + EXT)
@@ -31,7 +25,7 @@ def run_c(src, prefix=''):
         p = subprocess.Popen([binary], stderr=subprocess.PIPE)
         out, err = p.communicate()
         if p.returncode < 0:
-            raise ExecutionError(err)
+            raise error.BinaryExecutionError(err)
         return p.returncode
     finally:
         os.remove(binary)
