@@ -11,10 +11,10 @@ fn test_if() {
 
    var i: Int = if true { 1 } else { 0 }
    
-   if 1 {} //<error type mismatch
-   if print(1) {} //<error type mismatch
-   var i2: Int = if true { 1 } //<error type mismatch
-   var i3: Int = if true { 1 } else { true } //<error type mismatch
+   if 1 {} //<ModelError type mismatch
+   if print(1) {} //<ModelError type mismatch
+   var i2: Int = if true { 1 } //<ModelError type mismatch
+   var i3: Int = if true { 1 } else { true } //<ModelError type mismatch
 }
 
 fn test_if_else() {
@@ -34,23 +34,23 @@ fn test_while() {
    }
    while true {}
 
-   while 1 {} //<error type mismatch
-   while print(1) {} //<error type mismatch
+   while 1 {} //<ModelError type mismatch
+   while print(1) {} //<ModelError type mismatch
 }
 
 fn main() {
    if true {
-      abort() //<runtime abort
+      abort() //<RuntimeError abort
    } else {
       abort()
    }
    if false {
       abort()
    } else {
-      abort() //<runtime abort
+      abort() //<RuntimeError abort
    }
    if true {
-      abort() //<runtime abort
+      abort() //<RuntimeError abort
    }
    if false {
       abort()

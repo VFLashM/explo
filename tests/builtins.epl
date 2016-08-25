@@ -4,16 +4,16 @@ var i1: Int = 0
 var i2 = 1
 var i3 = -1
 var i4 = -0
-// var i5 = 01 //<error unexpected token
-// var i6 = -01 //<error unexpected token
+// var i5 = 01 //<ParserError unexpected token
+// var i6 = -01 //<ParserError unexpected token
 
 // var f1: Float = 0.0
 // var f2 = 1.2
 // var f3 = -1.2
-// var f4 = .0 //<error unexpected token
-// var f5 = 1. //<error unexpected token
-// var f6 = -.0 //<error unexpected token
-// var f7 = -1. //<error unexpected token
+// var f4 = .0 //<ParserError unexpected token
+// var f5 = 1. //<ParserError unexpected token
+// var f6 = -.0 //<ParserError unexpected token
+// var f7 = -1. //<ParserError unexpected token
 
 var b1: Bool = true
 var b2 = false
@@ -44,9 +44,9 @@ fn test_print() {
 
 fn main() {
    assert(not(false))
-   assert(not(true)) //<runtime abort
+   assert(not(true)) //<RuntimeError abort
    assert(not(not(true)))
-   assert(not(not(false))) //<runtime abort
+   assert(not(not(false))) //<RuntimeError abort
    
    assert(beq(true, true))
    assert(beq(false, false))

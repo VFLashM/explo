@@ -5,20 +5,30 @@ fn truefn() -> Bool { true }
 fn first(a: Int, b: Int) -> Int {
    a
 }
+
 fn second(a: Int, b: Int) -> Int {
    first(b, a)
 }
+
 fn assign(a: Bool) -> Bool {
    var b: Bool = true
    b = a
    b
 }
 
-fn mismatch1() -> Int { true } //<error type mismatch
-fn mismatch2() -> Bool {} //<error type mismatch
-fn mismatch3() -> Bool { var a: Bool a = true } //<error type mismatch
-fn mismatch4() { first(true, 1) } //<error type mismatch
-fn undefined() { unknown(true) } //<error undefined
+fn print_int(val: Int) {
+   print(val)
+}
+
+fn print_one() {
+   print_int(1)
+}
+
+fn mismatch1() -> Int { true } //<ModelError type mismatch
+fn mismatch2() -> Bool {} //<ModelError type mismatch
+fn mismatch3() -> Bool { var a: Bool a = true } //<ModelError type mismatch
+fn mismatch4() { first(true, 1) } //<ModelError type mismatch
+fn undefined() { unknown(true) } //<ModelError undefined
 
 fn main() {
    assert(truefn())
@@ -26,4 +36,6 @@ fn main() {
    assert(ieq(2, second(1, 2)))
    assert(assign(true))
    assert(not(assign(false)))
+   print_int(4) //<Output 4
+   print_one() //<Output 1
 }

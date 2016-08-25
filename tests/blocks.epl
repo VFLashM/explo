@@ -1,10 +1,11 @@
 fn assert(c: Bool) { if not(c) { abort() } }
 
 var a = { 1 }
-var b: Int = { true 1 }
-//var c = {} //<error type mismatch
-//var d: () = {} //<error type mismatch
-var e: Int = {} //<error type mismatch
+var b: Int = { true 2 }
+var c = {}
+var d: () = {}
+var e: Int = {} //<ModelError type mismatch
+var f: Bool = { true 5 } //<ModelError type mismatch
 
 fn main() {
    var a = { print(1) 12 }

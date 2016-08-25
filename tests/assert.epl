@@ -1,7 +1,7 @@
 fn assert(c: Bool) { if not(c) { abort() } }
 
 fn main() {
-   abort() //<runtime abort
+   abort() //<RuntimeError abort
    assert(true)
-   assert(false) //<runtime abort
+   assert(false) //<RuntimeError abort
 }

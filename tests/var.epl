@@ -1,30 +1,23 @@
-fn assert(c: Bool) { if not(c) { abort() } }
+var noval: Int
+var full: Int = 5
+var notype = 6
 
-enum Test { value }
-enum Void {}
-let immutable: Test = value
-var mutable: Test
-let notype = value
-let incompatible: Void = value //<error type mismatch
+let lnoval: Int //<ModelError not initialized
+let lfull: Int = full
+let lnotype = notype
 
-fn imm() {
-   let i = 3
-   i = 4 //<error variable is immutable
-}
-
-fn noinit() {
-   var u: Int
-   var v: Int = 2
-   v = u //<runtime variable not initialized
-   u = v
-}
+var noval: Int //<ModelError already defined
 
 fn main() {
-   var m = 1
-   assert(ieq(m, 1))
-   m = 2
-   assert(ieq(m, 2))
-   let im = 3
-   assert(ieq(im, 3))
-   noinit()
+   print(noval) //<InterpreterError not initialized
+   assert(ieq(full, 5))
+   assert(ieq(notype, 6))
+   assert(ieq(lfull, 5))
+   assert(ieq(lnotype, 6))
+
+   full = 7
+   assert(ieq(full, 7))
+   
+   lfull = 7 //<ModelError immutable
+   assert(ieq(lfull, 5))
 }

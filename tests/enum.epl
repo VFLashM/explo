@@ -1,9 +1,13 @@
-enum Name {
-     some,
-     mutually,
-     exclusive,
-     options,
-}
-enum NoTrail { one, two }
-enum Void {}
-enum Name { bad } //<error already defined
+//!no_run
+
+enum Empty {}
+enum Single { value }
+enum Double { yes, no }
+enum WithComma { one, two, three, }
+enum InvalidEmpty { , } //<ParserError
+enum InvalidNumbers { 1 } //<ParserError
+enum Single { some, other } //<ModelError already defined
+enum Int { some, other } //<ModelError already defined
+
+var i: Single = value
+var j = two

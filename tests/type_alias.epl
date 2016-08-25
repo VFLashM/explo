@@ -1,0 +1,9 @@
+//!no_run
+type NewInt = Int
+type NewInt = Bool //<ModelError already defined
+type Int = Bool //<ModelError already defined
+
+let i: NewInt = 4
+let j: Int = 5
+var k = add(i, j)
+var l = beq(i, true) //<ModelError type mismatch
