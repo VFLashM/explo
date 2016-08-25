@@ -83,7 +83,7 @@ class TestFile(object):
         test_code = '\n'.join(test_lines)
         return test_code
 
-    def _check(self, verbose=False):
+    def _check(self, verbose, run_interpreter, run_compiler):
         print 'Checking %s' % self.path
         good = self.build_code(None)
         if verbose: print 'Checking normal run'
@@ -91,10 +91,12 @@ class TestFile(object):
             if verbose: print 'Building model'
             m = interpreter.build_model(good)
             if not self.no_run:
-                if verbose: print 'Checking interpreter'
-                interpreter.run_model(m)
-                if verbose: print 'Checking compiler'
-                compiler.run_model(m)
+                if run_interpreter:
+                    if verbose: print 'Checking interpreter'
+                    interpreter.run_model(m)
+                if run_compiler:
+                    if verbose: print 'Checking compiler'
+                    compiler.run_model(m)
         except Exception as e:
             raise NoSuccess(good, e), None, sys.exc_info()[2]
 
@@ -116,27 +118,29 @@ class TestFile(object):
             if self.no_run:
                 raise NoFailure(bad, edef)
 
-            if verbose: print 'Checking interpreter'
-            try:
-                interpreter.run_model(m)
-            except Exception as e:
-                if not issubclass(type(e), etype) or message not in str(e):
-                    raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
-            else:
-                raise NoFailure(bad, edef)
+            if run_interpreter:
+                if verbose: print 'Checking interpreter'
+                try:
+                    interpreter.run_model(m)
+                except Exception as e:
+                    if not issubclass(type(e), etype) or message not in str(e):
+                        raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
+                else:
+                    raise NoFailure(bad, edef)
 
-            if verbose: print 'Checking compiler'
-            try:
-                compiler.run_model(m)
-            except error.ExecutionTimeError as e:
-                if not issubclass(type(e), etype) or message not in str(e):
-                    raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
-            else:
-                raise NoFailure(bad, edef)
+            if run_compiler:
+                if verbose: print 'Checking compiler'
+                try:
+                    compiler.run_model(m)
+                except error.ExecutionTimeError as e:
+                    if not issubclass(type(e), etype) or message not in str(e):
+                        raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
+                else:
+                    raise NoFailure(bad, edef)
 
-    def check(self, verbose=False):
+    def check(self, verbose=False, no_interpreter=False, no_compiler=False):
         try:
-            self._check(verbose)
+            self._check(verbose, not no_interpreter, not no_compiler)
             return True
         except TestFailure as e:
             if verbose:
@@ -146,7 +150,7 @@ class TestFile(object):
                 print 'For code:'
                 print e.code
             else:
-                print e
+                print 'ERROR:', e
 
 def gather_tests(path, verbose=False):
     if os.path.isfile(path):
@@ -166,6 +170,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('path', nargs='*')
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('--no-run', action='store_true')
+    parser.add_argument('--no-compiler', action='store_true')
+    parser.add_argument('--no-interpreter', action='store_true')
     args = parser.parse_args()
     
     test_set = []
@@ -179,12 +186,15 @@ if __name__ == '__main__':
     test_count = sum(t.count for t in test_set)
     print 'Collected %s test files with %s test cases' % (len(test_set), test_count)
     
-    success = True
+    failed = 0
     for test_file in test_set:
-        if not test_file.check(args.verbose):
-            success = False
-    if success:
-        print 'All succeeded'
-    else:
-        print 'Some tests failed'
+        if not test_file.check(args.verbose,
+                               args.no_interpreter or args.no_run,
+                               args.no_compiler or args.no_run):
+            failed += 1
+    if failed:
+        print '%s tests failed' % failed
         sys.exit(1)
+    else:
+        print 'All succeeded'
+        
