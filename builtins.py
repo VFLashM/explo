@@ -53,14 +53,14 @@ class BuiltinAnyType(BuiltinType):
         pass
 
 class Builtins(model.Context):
-    def __init__(self):
+    def __init__(self, stdout=sys.stdout):
         model.Context.__init__(self, None)
 
         def abort(*args):
             raise error.InterpreterError('abort')
         
         self.add_type(BuiltinAnyType(), None)
-        self.add_function('print', ['Any'], None, lambda x, args: sys.stdout.write(str(args[0]) + '\n'), model.ExecutionMode.runtime)
+        self.add_function('print', ['Any'], None, lambda x, args: stdout.write(str(args[0]) + '\n'), model.ExecutionMode.runtime)
         self.add_function('abort', [], None, abort, model.ExecutionMode.runtime)
         
         bool_type = self.add_def(ast.Enum('Bool', ['false', 'true'])).type

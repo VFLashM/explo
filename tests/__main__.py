@@ -35,6 +35,10 @@ class NoSuccess(TestFailure):
         TestFailure.__init__(self, 'received %s' % type(cause).__name__, code)
         self.cause = cause
 
+class OutputMismatch(TestFailure):
+    def __init__(self, code, exp, got):
+        TestFailure.__init__(self, 'output mismatch, expected:\n%s\ngot:\n%s' % (exp, got), code)
+
 class NoFailure(TestFailure):
     def __init__(self, code, expected):
         TestFailure.__init__(self, 'expected %s(%s)' % (expected[0].__name__, expected[1]), code)
@@ -54,6 +58,7 @@ class TestFile(object):
         self.count = 1
         self.errors = {}
         self.output = []
+        self.expected_output = []
         self.no_run = False
         for idx, line in enumerate(self.lines):
             if '//<' in line:
@@ -75,6 +80,17 @@ class TestFile(object):
             if line.strip().startswith('//!no_run'):
                 self.no_run = True
 
+    def write(self, s):
+        self.output.append(s)
+
+    def check_output(self, code):
+        if not self.expected_output:
+            return
+        exp = '\n'.join(self.expected_output)
+        got = ''.join(self.output)
+        if exp != got:
+            raise OutputMismatch(code, exp, got)
+
     def build_code(self, error_idx=None):
         test_lines = list(self.lines)
         for idx, line in enumerate(test_lines):
@@ -89,14 +105,18 @@ class TestFile(object):
         if verbose: print 'Checking normal run'
         try:
             if verbose: print 'Building model'
-            m = interpreter.build_model(good)
+            m = interpreter.build_model(good, self)
             if not self.no_run:
                 if run_interpreter:
                     if verbose: print 'Checking interpreter'
+                    self.output = []
                     interpreter.run_model(m)
+                    self.check_output(good)
                 if run_compiler:
                     if verbose: print 'Checking compiler'
+                    self.output = []
                     compiler.run_model(m)
+                    self.check_output(good)
         except Exception as e:
             raise NoSuccess(good, e), None, sys.exc_info()[2]
 
@@ -106,7 +126,7 @@ class TestFile(object):
             if verbose: print 'Checking error run: %s %s' % (etype.__name__, message)
             if verbose: print 'Building model'
             try:
-                m = interpreter.build_model(bad)
+                m = interpreter.build_model(bad, self)
             except Exception as e:
                 if not issubclass(type(e), etype) or message not in str(e):
                     raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]

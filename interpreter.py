@@ -1,4 +1,5 @@
 #!env python2.7
+import sys
 import parse
 import model
 import builtins
@@ -111,9 +112,9 @@ model.TypeDef.execute = TypeDef_execute
 model.Function.call = Function_call
 model.Block.execute = Block_execute
 
-def build_model(content):
+def build_model(content, output=sys.stdout):
     program = parse.parse(content)
-    builtins_context = builtins.Builtins()
+    builtins_context = builtins.Builtins(output)
     return model.Program(program, builtins_context)
 
 def run_model(m):
