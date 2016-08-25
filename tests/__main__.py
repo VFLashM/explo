@@ -148,7 +148,7 @@ class TestFile(object):
                 if e.cause:
                     print 'Cause: %s(%s)' % (type(e.cause).__name__, e.cause)
                 print 'For code:'
-                print e.code
+                print '\n'.join('%s\t%s' % (idx+1,line) for idx, line in enumerate(e.code.splitlines()))
             else:
                 print 'ERROR:', e
 
