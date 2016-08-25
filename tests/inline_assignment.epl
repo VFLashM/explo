@@ -1,0 +1,12 @@
+fn assert(c: Bool) { if not(c) { abort() } }
+fn ct(a: Int) -> Int {
+   var b: Int
+   b = a
+   b
+}
+
+let res = ct(2)
+
+fn main() {
+   assert(ieq(3, res))
+}
