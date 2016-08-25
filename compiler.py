@@ -6,6 +6,11 @@ import subprocess
 import os
 import error
 
+if os.name == 'nt':
+    EXT = '.exe'
+else:
+    EXT = ''
+
 class ExecutionError(error.BaseError):
     pass
 
@@ -14,12 +19,12 @@ class CompilationError(error.BaseError):
     
 def compile(src, dst):
     try:
-        subprocess.check_call(['gcc', src, '-o', dst, '-I.'])
+        subprocess.check_call(['gcc' + EXT, src, '-o', dst, '-I.'])
     except subprocess.CalledProcessError:
         raise CompilationError()
 
 def run_c(src, prefix=''):
-    fd, binary = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled')
+    fd, binary = tempfile.mkstemp(prefix=prefix + '_', suffix='_compiled' + EXT)
     try:
         os.close(fd)
         compile(src, binary)
@@ -32,11 +37,15 @@ def run_c(src, prefix=''):
         os.remove(binary)
 
 def run_model(m, prefix=''):
-    code = tempfile.NamedTemporaryFile(prefix=prefix + '_', suffix='_transpiled.c')
     transpiled = transpiler.transpile_model(m)
-    code.write(transpiled)
-    code.flush()
-    return run_c(code.name)
+    fd, cpath = tempfile.mkstemp(prefix=prefix + '_', suffix='_transpiled.c')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(transpiled)
+        return run_c(cpath)
+    finally:
+        if os.path.exists(cpath):
+            os.remove(cpath)
 
 if __name__ == '__main__':
     import sys
@@ -53,18 +62,23 @@ if __name__ == '__main__':
     content = open(args.path).read()
     prefix = os.path.basename(args.path)
 
-    code = tempfile.NamedTemporaryFile(suffix='_transpiled.c', prefix=prefix + '_')
     m = interpreter.build_model(content)
-    transpiled = transpiler.transpile_model(m)
-    code.write(transpiled)
-    code.flush()
+    cfd, cpath = tempfile.mkstemp(suffix='_transpiled.c', prefix=prefix + '_')
+    try:
+        transpiled = transpiler.transpile_model(m)
 
-    if args.debug:
-        code.seek(0)
-        print code.read()
+        if args.debug:
+            for idx, line in enumerate(transpiled.splitlines()):
+                print '%s\t%s' % (idx+1, line)
 
-    if args.output:
-        compile(code.name, args.output)
-    else:
-        rc = run_c(code.name, prefix)
-        sys.exit(rc)
+        with os.fdopen(cfd, 'w') as f:
+            f.write(transpiled)
+
+        if args.output:
+            compile(cpath, args.output)
+        else:
+            rc = run_c(cpath, prefix)
+            sys.exit(rc)
+    finally:
+        if os.path.exists(cpath):
+            os.remove(cpath)
