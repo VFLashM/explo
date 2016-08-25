@@ -131,9 +131,7 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     if self.value:
         body.string('=')
         inlined = self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-        print inlined, self.var.readonly, self
         if self.var.readonly and inlined:
-            print 'exec', self
             self.execute(tstate.istate)
     body.line(';')
     

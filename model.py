@@ -59,10 +59,15 @@ class NotCompileTime(ModelError):
 class Node(object):
     def __init__(self, ast_node):
         self.ast_node = ast_node
-        self.ex_mode = None
+
+    @property
+    def ex_mode(self):
+        raise NotImplementedError(type(self))
 
 class Definition(Node):
-    pass
+    @property
+    def ex_mode(self):
+        return ExecutionMode.compile
 
 class Type(Node):
     def __init__(self, ast_node):
@@ -94,9 +99,17 @@ class Var(Expression):
             self.type = context.resolve_type(ast_node.type)
         else:
             self.type = None
-
+        if self.readonly:
+            self.var_ex_mode = ExecutionMode.compile
+        else:
+            self.var_ex_mode = ExecutionMode.runtime
+    
     def __str__(self):
         return 'Var(%s, %s)' % (self.name, self.type.name)
+
+    @property
+    def ex_mode(self):
+        return self.var_ex_mode
 
 class VarDef(Definition):
     def __init__(self, ast_node, context):
@@ -108,28 +121,35 @@ class VarDef(Definition):
                 self.var.type = self.value.type
             else:
                 self.var.type.check_assignable_from(self.value.type, ast_node)
-            self.ex_mode = self.value.ex_mode
         else:
             self.value = None
             if self.var.type is None:
                 raise ModelError('No type specified', ast_node)
-            self.ex_mode = ExecutionMode.compile
         if ast_node.type:
             self.type = context.resolve_type(ast_node.type)
-        
 
     def __str__(self):
         return 'VarDef(%s = %s)' % (self.var, self.value)
+
+    @property
+    def ex_mode(self):
+        if self.value:
+            return self.value.ex_mode
+        else:
+            return ExecutionMode.compile
 
 class Value(Expression):
     def __init__(self, value, type, ast_node):
         Expression.__init__(self, ast_node)
         self.value = value
         self.type = type
-        self.ex_mode = ExecutionMode.compile
 
     def __str__(self):
         return 'Value(%s, %s)' % (self.value, self.type.name)
+
+    @property
+    def ex_mode(self):
+        return ExecutionMode.compile
 
 class Enum(Type):
     def __init__(self, ast_node, context):
@@ -158,17 +178,22 @@ class Call(Expression):
         self.callee = create_expression(ast_node.callee, context)
         self.args = [create_expression(arg, context) for arg in ast_node.args]
         if not isinstance(self.callee.type, FuncType):
-            print type(self.callee.type), FuncType, isinstance(self.callee.type, FuncType)
             raise ModelError('Not callable: %s' % self.callee.type, ast_node)
         if len(self.callee.type.arg_types) != len(self.args):
             raise ModelError('Argument count mismatch', ast_node)
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
             exp_type.check_assignable_from(got_arg.type, ast_node)
         self.type = self.callee.type.return_type
-        self.ex_mode = self.callee.ex_mode
         
     def __str__(self):
-        return 'Call[%s](%s, %s)' % (self.ex_mode, self.callee.name, map(str, self.args))
+        return 'Call[%s](%s, [%s])' % (self.ex_mode, self.callee.name, ', '.join(map(str, self.args)))
+
+    @property
+    def ex_mode(self):
+        res = self.callee.ex_mode
+        for arg in self.args:
+            res = ExecutionMode.worst(res, arg.ex_mode)
+        return res
 
 class Assignment(Expression):
     def __init__(self, ast_node, context):
@@ -200,12 +225,15 @@ class If(Expression):
         if self.on_false and self.on_true.type == self.on_false.type:
             self.type = self.on_true.type
             
-        self.ex_mode = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
-        if self.on_false:
-            self.ex_mode = ExecutionMode.worst(self.ex_mode, self.on_false.ex_mode)
-
     def __str__(self):
         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
+
+    @property
+    def ex_mode(self):
+        res = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
+        if self.on_false:
+            res = ExecutionMode.worst(res, self.on_false.ex_mode)
+        return res
 
 class While(Expression):
     def __init__(self, ast_node, context):
@@ -257,15 +285,21 @@ class Function(Expression):
 
         arg_types = [arg.var.type for arg in self.args]
         self.type = FuncType(arg_types, self.return_type)
-        self.ex_mode = self.body.ex_mode
+
+        ex_mode = self.ex_mode
+        for arg in self.args:
+            arg.var.var_ex_mode = ex_mode
 
     def __str__(self):
         return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
 
+    @property
+    def ex_mode(self):
+        return self.body.ex_mode
+
 class FuncDef(Definition):
     def __init__(self, ast_node, context):
         self.func = Function(ast_node, context)
-        self.ex_mode = ExecutionMode.compile
 
     def __str__(self):
         return 'FuncDef(%s)' % self.func
@@ -348,12 +382,8 @@ class Block(Expression, Context):
         Expression.__init__(self, ast_node)
         self.statements = []
         self.type = None
-        self.ex_mode = ExecutionMode.compile
-        if ast_node:
-            for st in ast_node.statements:
-                res = self.add_statement(st)
-                if res:
-                    self.ex_mode = ExecutionMode.worst(self.ex_mode, res.ex_mode)
+        for st in ast_node.statements:
+            self.add_statement(st)
 
     def add_statement(self, ast_node):
         if isinstance(ast_node, ast.Definition):
@@ -370,6 +400,13 @@ class Block(Expression, Context):
 
     def __str__(self):
         return 'Block[%s] {\n%s\n}' % (self.ex_mode, '\n'.join(self._indent(str(st)) for st in self.statements))
+
+    @property
+    def ex_mode(self):
+        res = ExecutionMode.compile
+        for st in self.statements:
+            res = ExecutionMode.worst(res, st.ex_mode)
+        return res
 
 class Program(Block):
     def __init__(self, *args, **kwargs):

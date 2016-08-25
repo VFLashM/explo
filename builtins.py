@@ -20,7 +20,7 @@ class BuiltinFunction(model.Node):
         arg_types = [arg.var.type for arg in self.args]
         self.type = model.FuncType(arg_types, self.return_type)
         self.impl = impl
-        self.ex_mode = ex_mode
+        self._ex_mode = ex_mode
 
     def execute(self, state):
         return self
@@ -33,6 +33,10 @@ class BuiltinFunction(model.Node):
 
     def transpile(self, tstate, prelude, output, result):
         result.string(self.name)
+
+    @property
+    def ex_mode(self):
+        return self._ex_mode
 
 class BuiltinType(model.Type):
     def __init__(self, name):
