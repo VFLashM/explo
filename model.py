@@ -313,11 +313,18 @@ class FuncDef(Definition):
         return 'FuncDef(%s)' % self.func
 
 class Context(object):
-    def __init__(self, parent):
-        self.parent = parent
-        self.types = {}
-        self.terms = {}
-        self.names = set()
+    def __init__(self, parent, import_parent_names=False):
+        if import_parent_names:
+            assert parent
+            self.parent = None
+            self.types = dict(parent.types)
+            self.terms = dict(parent.terms)
+            self.names = set(parent.names)
+        else:
+            self.parent = parent
+            self.types = {}
+            self.terms = {}
+            self.names = set()
 
     def resolve_term(self, name, ast_node):
         if name not in self.names:
@@ -388,8 +395,8 @@ class Context(object):
         return res
 
 class Block(Expression, Context):
-    def __init__(self, ast_node, parent):
-        Context.__init__(self, parent)
+    def __init__(self, ast_node, parent, import_parent_names=False):
+        Context.__init__(self, parent, import_parent_names)
         Expression.__init__(self, ast_node)
         self.statements = []
         self.type = None
@@ -420,8 +427,8 @@ class Block(Expression, Context):
         return res
 
 class Program(Block):
-    def __init__(self, *args, **kwargs):
-        Block.__init__(self, *args, **kwargs)
+    def __init__(self, ast_node, builtins):
+        Block.__init__(self, ast_node, builtins, True)
         if self.ex_mode != ExecutionMode.compile:
             raise NotCompileTime(self)
     
