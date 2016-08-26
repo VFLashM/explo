@@ -174,6 +174,13 @@ class FuncType(Type):
 class Tuple(Type):
     def __init__(self, members):
         self.members = members
+        self.name = 'Tuple(%s)' % ', '.join(m.name for m in self.members)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.members == other.members
+
+    def __ne__(self, other):
+        return not(self == other)
 
     def check_assignable_from(self, other, ast_node):
         if not self.members and not other:

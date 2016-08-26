@@ -36,7 +36,8 @@ def Node_execute(self, state):
 def Var_execute(self, state):
     res = state[self.name]
     if res is None:
-        raise error.InterpreterError('variable not initialized: %s' % self.name)
+        if self.type != model.Tuple([]):
+            raise error.InterpreterError('variable not initialized: %s' % self.name)
     return res
 
 def VarDef_execute(self, state):
