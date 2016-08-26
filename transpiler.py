@@ -87,7 +87,7 @@ def Node_transpile(self, tstate, prelude, body, output):
     raise NotImplementedError(type(self))
 
 def inline(expr, tstate, prelude, body, result):
-    if expr.ex_mode == model.ExecutionMode.compile:
+    if expr.ex_mode == model.ExecutionMode.compile and expr.type is not None:
         try:
             res = expr.execute(tstate.istate)
         except error.InterpreterError as e:
