@@ -1,6 +1,7 @@
 var noval: Int
 var full: Int = 5
 var notype = 6
+var unit = {}
 
 let lnoval: Int //<ModelError not initialized
 let lfull: Int = full
@@ -20,4 +21,6 @@ fn main() {
    
    lfull = 7 //<ModelError immutable
    assert(ieq(lfull, 5))
+
+   unit = {}
 }

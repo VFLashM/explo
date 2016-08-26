@@ -25,6 +25,7 @@ fn print_one() {
 }
 
 fn voidarg(a: ()) {
+   print(3)
    a
 }
 
@@ -42,5 +43,8 @@ fn main() {
    assert(not(assign(false)))
    print_int(4) //<Output 4
    print_one() //<Output 1
-   voidarg(voidarg(voidarg()))
+   voidarg(voidarg(voidarg(print_one()))) //<Output 1
+   //<Output 3
+   //<Output 3
+   //<Output 3
 }
