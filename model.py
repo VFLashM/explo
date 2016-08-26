@@ -118,7 +118,10 @@ class VarDef(Definition):
         if ast_node.value:
             self.value = create_expression(ast_node.value, context)
             if self.var.type is None:
-                self.var.type = self.value.type
+                if self.value.type:
+                    self.var.type = self.value.type
+                else:
+                    self.var.type = Tuple([])
             else:
                 self.var.type.check_assignable_from(self.value.type, ast_node)
         else:
@@ -171,6 +174,11 @@ class FuncType(Type):
 class Tuple(Type):
     def __init__(self, members):
         self.members = members
+
+    def check_assignable_from(self, other, ast_node):
+        if not self.members and not other:
+            return
+        Type.check_assignable_from(self, other, ast_node)
 
 class Call(Expression):
     def __init__(self, ast_node, context):
@@ -350,11 +358,8 @@ class Context(object):
                 raise KindMismatch(name, ast_node)
             return self.types[name]
         elif isinstance(ast_node, ast.Tuple):
-            if ast_node.members:
-                members = [self.resolve_type(member) for member in ast_node.members]
-                return Tuple(members)
-            else:
-                return None
+            members = [self.resolve_type(member) for member in ast_node.members]
+            return Tuple(members)
         else:
             raise FatalError('unexpected node', ast_node)
 

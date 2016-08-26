@@ -98,7 +98,10 @@ def inline(expr, tstate, prelude, body, result):
 
 def Block_transpile(self, tstate, prelude, body, result):
     if not self.statements:
-        body.string('{}')
+        if result:
+            result.string('unit')
+        else:
+            body.string('{}')
         return
     if inline(self, tstate, prelude, body, result):
         return True
@@ -146,6 +149,12 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     
 def Type_transpile(self, tstate, prelude, body, result):
     result.string(self.name)
+
+def Tuple_transpile(self, tstate, prelude, body, result):
+    if self.members:
+        raise NotImplementedError()
+    else:
+        result.string('Unit')
 
 def TypeDef_transpile(self, tstate, prelude, body, result):
     body.string('typedef enum')
@@ -272,6 +281,7 @@ model.Node.transpile = Node_transpile
 model.Block.transpile = Block_transpile
 model.VarDef.transpile = VarDef_transpile
 model.Type.transpile = Type_transpile
+model.Tuple.transpile = Tuple_transpile
 model.TypeDef.transpile = TypeDef_transpile
 model.Value.transpile = Value_transpile
 model.Program.transpile = Program_transpile

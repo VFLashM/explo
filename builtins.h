@@ -3,8 +3,10 @@
 
 typedef int Int;
 typedef int Bool;
-const Bool true = 1;
-const Bool false = 0;
+typedef int Unit;
+#define false 0
+#define true 1
+#define unit 0
 
 Bool and(Bool a, Bool b) { return a && b; }
 Bool or(Bool a, Bool b) { return a || b; }
@@ -30,6 +32,7 @@ void print(Int a) { printf("%d\n", a); }
 void abort() {
     fprintf(stderr, "abort");
 #ifdef _WIN32
+    void exit(int const);
     exit(-SIGABRT);
 #else
     raise(SIGABRT);
