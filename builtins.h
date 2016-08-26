@@ -29,5 +29,9 @@ Bool leq(Int a, Int b) { return a <= b; }
 void print(Int a) { printf("%d\n", a); }
 void abort() {
     fprintf(stderr, "abort");
+#ifdef _WIN32
+    exit(-SIGABRT);
+#else
     raise(SIGABRT);
+#endif
 }
