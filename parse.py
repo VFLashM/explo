@@ -57,13 +57,16 @@ def p_optional_comma(p):
     pass
 
 def p_def_enum(p):
-    '''def : ENUM ID LBRACE id_list optional_comma RBRACE'''
-    p[0] = ast.Enum(p[2], p[4])
+    '''def : ENUM ID LBRACE id_list optional_comma RBRACE
+           | ENUM ID LBRACE RBRACE'''
+    if len(p) > 5:
+        p[0] = ast.Enum(p[2], p[4])
+    else:
+        p[0] = ast.Enum(p[2], [])
     add_srcmap(p, 2)
 
 def p_id_list(p):
-    '''id_list :
-               | ID
+    '''id_list : ID
                | id_list COMMA ID
     '''
     _process_list(p)
@@ -207,7 +210,7 @@ def parse(content, debug=False):
     lex = lexer.lexer()
     parser = yacc.yacc()
     res = parser.parse(content, lexer=lex, debug=debug)
-    if res is None:
+    if res is None or lex.errors:
         errors = '\n'.join(lex.errors)
         if not errors:
             errors = 'unexpected end of file'
