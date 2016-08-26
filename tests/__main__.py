@@ -37,16 +37,16 @@ class NoSuccess(TestFailure):
 
 class OutputMismatch(TestFailure):
     def __init__(self, code, exp, got):
-        TestFailure.__init__(self, 'output mismatch, expected:\n%s\ngot:\n%s' % (exp, got), code)
+        TestFailure.__init__(self, '%s output mismatch, expected:\n%s\ngot:\n%s' % (stage, exp, got), code)
 
 class NoFailure(TestFailure):
-    def __init__(self, code, expected):
-        TestFailure.__init__(self, 'expected %s(%s)' % (expected[0].__name__, expected[1]), code)
+    def __init__(self, stage, code, expected):
+        TestFailure.__init__(self, '%s expected %s(%s)' % (stage, expected[0].__name__, expected[1]), code)
         self.expected = expected
 
 class WrongFailure(TestFailure):
-    def __init__(self, code, expected, cause):
-        TestFailure.__init__(self, 'expected %s(%s), received %s' % (expected[0].__name__, expected[1], type(cause).__name__), code)
+    def __init__(self, stage, code, expected, cause):
+        TestFailure.__init__(self, '%s expected %s(%s), received %s' % (stage, expected[0].__name__, expected[1], type(cause).__name__), code)
         self.expected = expected
         self.cause = cause
     
@@ -129,11 +129,11 @@ class TestFile(object):
                 m = interpreter.build_model(bad, self)
             except Exception as e:
                 if not issubclass(type(e), etype) or message not in str(e):
-                    raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
+                    raise WrongFailure('model', bad, edef, e), None, sys.exc_info()[2]
                 continue
             else:
                 if issubclass(etype, error.CodeSyntaxError):
-                    raise NoFailure(bad, edef)
+                    raise NoFailure('model', bad, edef)
 
             if self.no_run:
                 raise NoFailure(bad, edef)
@@ -144,9 +144,9 @@ class TestFile(object):
                     interpreter.run_model(m)
                 except Exception as e:
                     if not issubclass(type(e), etype) or message not in str(e):
-                        raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
+                        raise WrongFailure('interpreter', bad, edef, e), None, sys.exc_info()[2]
                 else:
-                    raise NoFailure(bad, edef)
+                    raise NoFailure('interpreter', bad, edef)
 
             if run_compiler:
                 if verbose: print 'Checking compiler'
@@ -154,9 +154,9 @@ class TestFile(object):
                     compiler.run_model(m)
                 except error.ExecutionTimeError as e:
                     if not issubclass(type(e), etype) or message not in str(e):
-                        raise WrongFailure(bad, edef, e), None, sys.exc_info()[2]
+                        raise WrongFailure('interpreter', bad, edef, e), None, sys.exc_info()[2]
                 else:
-                    raise NoFailure(bad, edef)
+                    raise NoFailure('compiler', bad, edef)
 
     def check(self, verbose=False, no_interpreter=False, no_compiler=False):
         try:
