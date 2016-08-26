@@ -1,7 +1,6 @@
-let a = 3
-let b = add(1, a)
-var i = { true add(a, b) }
+fn first(a: Int, b: Int) -> Int {
+   a
+}
 
 fn main() {
-   //print(i)
 }
