@@ -173,15 +173,18 @@ class TestFile(object):
                 print 'ERROR:', e
 
 def gather_tests(path, verbose=False):
+    
     if os.path.isfile(path):
         return [TestFile(path, verbose)]
-    else:
+    elif os.path.isdir(path):
         res = []
         for name in os.listdir(path):
             ipath = os.path.join(path, name)
             if not name.startswith('.') and (os.path.isdir(ipath) or name.endswith('.epl')):
                 res += gather_tests(ipath, verbose)
         return res
+    else:
+        assert False, 'Weird path: %s' % path
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
