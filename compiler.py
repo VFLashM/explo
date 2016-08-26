@@ -71,7 +71,7 @@ if __name__ == '__main__':
         if args.output:
             compile(cpath, args.output)
         else:
-            rc, out, err = run_c(cpath, prefix, pipe=True)
+            rc, out, err = run_c(cpath, prefix)
             sys.stdout.write(out)
             sys.stderr.write(err)
             sys.exit(rc)
