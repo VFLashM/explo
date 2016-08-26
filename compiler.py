@@ -57,17 +57,15 @@ if __name__ == '__main__':
     prefix = os.path.basename(args.path)
 
     m = interpreter.build_model(content)
+    transpiled = transpiler.transpile_model(m)
+    if args.debug:
+        for idx, line in enumerate(transpiled.splitlines()):
+            print '%s\t%s' % (idx+1, line)
+            
     cfd, cpath = tempfile.mkstemp(suffix='_transpiled.c', prefix=prefix + '_')
     try:
-        transpiled = transpiler.transpile_model(m)
-
-        if args.debug:
-            for idx, line in enumerate(transpiled.splitlines()):
-                print '%s\t%s' % (idx+1, line)
-
         with os.fdopen(cfd, 'w') as f:
             f.write(transpiled)
-
         if args.output:
             compile(cpath, args.output)
         else:
