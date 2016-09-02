@@ -1,6 +1,21 @@
-fn first(a: Int, b: Int) -> Int {
-   a
+let first = fn(a: Int, b: Int) -> Int {
+    a
 }
 
-fn main() {
+let second = fn(a: Int, b: Int) -> Int {
+    first(b, a)
+}
+
+let Some = Int
+
+let pass = fn(v: Some) -> Some {
+    v
+}
+
+let ignore = fn(v: Some) {}
+
+let main = fn() {
+    var a = first(1, pass(2))
+    a = 5
+    pass(a)
 }

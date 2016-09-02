@@ -45,16 +45,15 @@ class Var(Definition):
         res += ')'
         return res
 
-class Func(Definition):
-    def __init__(self, name, args, return_type, body):
-        self.name = name
+class Func(Expression):
+    def __init__(self, args, return_type, body):
         self.args = args
         self.return_type = return_type
         self.body = body
 
     def __str__(self):
         args = ', '.join(map(str, self.args))
-        return 'Func(%s, [%s]) %s' % (self.name, args, self.body)
+        return 'Func(%s) %s' % (args, self.body)
 
 class Call(Expression):
     def __init__(self, callee, args):
@@ -132,3 +131,5 @@ class Block(Expression):
         res += '}'
         return res
         
+class Program(Block):
+    pass

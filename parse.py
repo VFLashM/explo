@@ -42,7 +42,7 @@ def _process_list(p, sep=1):
 
 def p_program(p):
     '''program : def_list'''
-    p[0] = ast.Block(p[1])
+    p[0] = ast.Program(p[1])
 
 def p_def_list(p):
     '''def_list : def
@@ -56,46 +56,6 @@ def p_optional_comma(p):
     '''
     pass
 
-def p_def_enum(p):
-    '''def : ENUM ID LBRACE id_list optional_comma RBRACE
-           | ENUM ID LBRACE RBRACE'''
-    if len(p) > 5:
-        p[0] = ast.Enum(p[2], p[4])
-    else:
-        p[0] = ast.Enum(p[2], [])
-    add_srcmap(p, 2)
-
-def p_id_list(p):
-    '''id_list : ID
-               | id_list COMMA ID
-    '''
-    _process_list(p)
-
-def p_def_type_alias(p):
-    '''def : TYPE ID EQ type'''
-    p[0] = ast.TypeAlias(p[2], p[4])
-    add_srcmap(p, 2)
-
-def p_type_simple(p):
-    '''type : ID'''
-    p[0] = ast.SimpleType(p[1])
-    add_srcmap(p, 1)
-
-def p_type_tuple(p):
-    '''type : LPAREN RPAREN
-            | LPAREN type_list optional_comma RPAREN
-    '''
-    if len(p) > 3:
-        p[0] = ast.Tuple(p[2])
-    else:
-        p[0] = ast.Tuple([])
-
-def p_type_list(p):
-    '''type_list : type
-                 | type_list COMMA type
-    '''
-    _process_list(p)
-
 def p_def_var(p):
     '''def : LET ID EQ expr
            | VAR ID EQ expr
@@ -105,10 +65,10 @@ def p_def_var(p):
     add_srcmap(p, 2)
 
 def p_def_var_typed(p):
-    '''def : LET ID COLON type
-           | VAR ID COLON type
-           | LET ID COLON type EQ expr
-           | VAR ID COLON type EQ expr
+    '''def : LET ID COLON expr
+           | VAR ID COLON expr
+           | LET ID COLON expr EQ expr
+           | VAR ID COLON expr EQ expr
     '''
     readonly = p[1] == 'let'
     if len(p) > 6:
@@ -123,13 +83,13 @@ def p_block(p):
     p[0] = ast.Block(p[2])
     add_srcmap(p, 1)
     
-def p_def_fn(p):
-    '''def : FN ID LPAREN arg_def_list RPAREN block
-           | FN ID LPAREN arg_def_list RPAREN ARROW type block'''
-    if len(p) >= 9:
-        p[0] = ast.Func(p[2], p[4], p[7], p[8])
+def p_expr_fn(p):
+    '''expr : FN LPAREN arg_def_list RPAREN block
+            | FN LPAREN arg_def_list RPAREN ARROW expr block'''
+    if len(p) >= 8:
+        p[0] = ast.Func(p[3], p[6], p[7])
     else:
-        p[0] = ast.Func(p[2], p[4], None, p[6])
+        p[0] = ast.Func(p[3], None, p[5])
     add_srcmap(p, 2)
 
 def p_expr_term(p):
@@ -179,7 +139,7 @@ def p_expr_list(p):
     _process_list(p)
 
 def p_arg_def(p):
-    '''arg_def : ID COLON type'''
+    '''arg_def : ID COLON expr'''
     p[0] = ast.Var(p[1], p[3], True)
     add_srcmap(p, 1)
 

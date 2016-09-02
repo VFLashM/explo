@@ -2,20 +2,6 @@
 import ast
 import error
 
-class ExecutionMode(str):
-    @staticmethod
-    def worst(old, new):
-        assert new is not None
-        assert old is not None
-        if old == ExecutionMode.compile or new == ExecutionMode.runtime:
-            return new
-        else:
-            return old
-
-ExecutionMode.compile = ExecutionMode('compile')
-ExecutionMode.dual = ExecutionMode('dual')
-ExecutionMode.runtime = ExecutionMode('runtime')
-
 class ModelError(error.CodeSyntaxError):
     def __init__(self, message, ast_node):
         error.CodeSyntaxError.__init__(self, message)
@@ -64,41 +50,35 @@ class Node(object):
     def ex_mode(self):
         raise NotImplementedError(type(self))
 
-class Definition(Node):
-    @property
-    def ex_mode(self):
-        return ExecutionMode.compile
-
-class Type(Node):
-    def __init__(self, ast_node):
-        Node.__init__(self, ast_node)
-
-    def check_assignable_from(self, other, ast_node):
-        if self != other:
-            raise TypeMismatch(self, other, ast_node)
-
-class TypeDef(Definition):
-    def __init__(self, ast_node, context):
-        Definition.__init__(self, ast_node)
-        self.type = Enum(ast_node, context)
-        
-    def __str__(self):
-        return 'TypeDef(%s)' % self.type
-
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
         self.type = None
+
+class VarDef(Node):
+    def __init__(self, ast_node, context):
+        Node.__init__(self, ast_node)
+        self.name = ast_node.name
+        if ast_node.value:
+            self.value = context.create_expression(ast_node.value)
+            value_type = self.value.type
+        else:
+            self.value = None
+            value_type = None
+        self.var = Var(ast_node, context, value_type)
+        
+        if ast_node.type is not None:
+            self.type = context.resolve_type(ast_node.type)
+        else:
+            self.type = None
+        self.context.define_var(ast_node.name, ast_node.readonly,)
 
 class Var(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
         self.name = ast_node.name
         self.readonly = ast_node.readonly
-        if ast_node.type is not None:
-            self.type = context.resolve_type(ast_node.type)
-        else:
-            self.type = None
+        
         if self.readonly:
             self.var_ex_mode = ExecutionMode.compile
         else:
