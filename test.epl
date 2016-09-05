@@ -14,8 +14,11 @@ let pass = fn(v: Some) -> Some {
 
 let ignore = fn(v: Some) {}
 
+var gvar = 4
+
 let main = fn() {
     var a = first(1, pass(2))
     a = 5
+    gvar = 6
     pass(a)
 }

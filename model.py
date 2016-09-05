@@ -163,7 +163,9 @@ class Assignment(Node):
         check_assignable_from(self.destination.type, self.value.type, ast_node)
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
-        self.runtime_depends = self.value.runtime_depends
+        self.runtime_depends = list(self.value.runtime_depends)
+        if self.destination.function != context.function:
+            self.runtime_depends.append(self.destination)
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
