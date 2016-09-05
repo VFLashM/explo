@@ -3,7 +3,7 @@ import ast
 import model
 import error
 
-class BuiltinMetaType(model.Node):
+class BuiltinMetaType(model.Builtin):
     type = None
     compile_time = True
     def __str__(self):
@@ -47,7 +47,7 @@ BUILTIN_META_TYPE.type = BUILTIN_META_TYPE
 #     def ex_mode(self):
 #         return self._ex_mode
 
-class BuiltinType(model.Node):
+class BuiltinType(model.Builtin):
     def __init__(self, name):
         self.name = name
         self.type = BUILTIN_META_TYPE

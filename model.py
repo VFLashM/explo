@@ -41,6 +41,10 @@ class Node(object):
     def __init__(self, ast_node=None):
         self.ast_node = ast_node
 
+class Builtin(Node):
+    def __init__(self):
+        Node.__init__(self, None)
+
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
@@ -107,7 +111,7 @@ class Value(Expression):
         self.runtime_depends = []
 
     def __str__(self):
-        return 'Value(%s, %s)' % (self.value, self.type.name)
+        return 'Value(%s, %s)' % (self.value, self.type)
 
     def execute(self, context):
         return self
@@ -255,6 +259,9 @@ class PrecompiledExpression(Node):
     def __str__(self):
         return 'PrecompiledExpression(%s)' % self.value
 
+    def execute(self, context):
+        return self.value
+
 class Context(object):
     def __init__(self, parent, function=None):
         if not function and parent:
@@ -264,7 +271,7 @@ class Context(object):
         self.terms = {}
         self.values = {}
 
-    def create_expression(self, ast_node):
+    def _create_expression(self, ast_node):
         if isinstance(ast_node, ast.Term):
             var_def = self.resolve_term(ast_node.name, ast_node)
             if isinstance(var_def, VarDef):
@@ -286,6 +293,14 @@ class Context(object):
             return Block(ast_node, self)
         else:
             raise FatalError('unexpected node: %s' % type(ast_node).__name__, ast_node)
+
+    def create_expression(self, ast_node):
+        res = self._create_expression(ast_node)
+        if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef)):
+            value = res.execute(self)
+            return PrecompiledExpression(ast_node, value, res)
+        else:
+            return res
 
     def resolve_term(self, name, ast_node):
         if name not in self.terms:
