@@ -97,7 +97,7 @@ class VarRef(Expression):
         return context.get_value(self.var_def.name)
 
     def __str__(self):
-        return 'VarRef(%s)' % self.var_def.name
+        return 'VarRef[%s](%s)' % (len(self.runtime_depends), self.var_def.name)
 
 class Value(Expression):
     def __init__(self, value, type, ast_node):
@@ -133,9 +133,10 @@ class Call(Expression):
             check_assignable_from(exp_type, got_arg.type, ast_node)
         self.type = self.callee.type.return_type
         
-        self.runtime_depends = self.callee.runtime_depends
+        self.runtime_depends = set(self.callee.runtime_depends)
         for arg in self.args:
-            self.runtime_depends += arg.runtime_depends
+            self.runtime_depends |= set(arg.runtime_depends)
+        self.runtime_depends = list(self.runtime_depends)
 
     def __str__(self):
         return '%s(%s)' % (self.callee, ', '.join(map(str, self.args)))
@@ -222,12 +223,15 @@ class Function(Expression):
             try:
                 arg_context = Context(context, self)
                 self.args = [VarDef(arg, arg_context) for arg in ast_node.args]
+                for a in self.args:
+                    a.runtime_depends = [a]
                 self.body = Block(ast_node.body, arg_context)
                 break
             except NotCompileTime as e:
                 raise
 
-        self.runtime_depends = []
+        self.runtime_depends = filter(lambda x: x not in self.args, self.body.runtime_depends)
+
         if self.return_type:
             check_assignable_from(self.return_type, self.body.type, ast_node)
 
@@ -235,7 +239,7 @@ class Function(Expression):
         self.type = FuncType(arg_types, self.return_type)
 
     def __str__(self):
-        return 'Func(%s, %s) %s' % (map(str, self.args), self.return_type, self.body)
+        return 'Func[%s](%s, %s) %s' % (len(self.runtime_depends), map(str, self.args), self.return_type, self.body)
 
     def execute(self, context):
         return self
@@ -322,6 +326,7 @@ class Block(Expression, Context):
     def __init__(self, ast_node, parent):
         Context.__init__(self, parent)
         Expression.__init__(self, ast_node)
+        self.runtime_depends = []
         self.statements = []
         self.type = None
         for st in ast_node.statements:
@@ -338,6 +343,9 @@ class Block(Expression, Context):
         if len(res.runtime_depends) == 0:
             res.execute(self)
         self.statements.append(res)
+        for rd in res.runtime_depends:
+            if rd not in self.runtime_depends:
+                self.runtime_depends.append(rd)
         return res
 
     def _indent(self, text):
