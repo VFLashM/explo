@@ -33,117 +33,86 @@ class Undefined(ModelError):
 class FatalError(ModelError):
     pass
 
-class KindMismatch(ModelError):
-    def __init__(self, name, ast_node):
-        ModelError.__init__(self, 'kind mismatch', ast_node)
-        self.name = name
-
 class NotCompileTime(ModelError):
     def __init__(self, expr):
-        ModelError.__init__(self, 'not compile time:\n%s' % expr, expr.ast_node)
+        ModelError.__init__(self, 'not compile time:\n%s\ndepends: %s' % (expr, map(str, expr.runtime_depends)), expr.ast_node)
 
 class Node(object):
-    def __init__(self, ast_node):
+    def __init__(self, ast_node=None):
         self.ast_node = ast_node
-
-    @property
-    def ex_mode(self):
-        raise NotImplementedError(type(self))
 
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
+        #self.runtime_depends = None
         self.type = None
+
+def check_assignable_from(a, b, c):
+    pass
 
 class VarDef(Node):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
+        self.function = context.function
+        self.readonly = ast_node.readonly
         self.name = ast_node.name
         if ast_node.value:
             self.value = context.create_expression(ast_node.value)
-            value_type = self.value.type
+            self.runtime_depends = self.value.runtime_depends
         else:
             self.value = None
-            value_type = None
-        self.var = Var(ast_node, context, value_type)
-        
-        if ast_node.type is not None:
-            self.type = context.resolve_type(ast_node.type)
-        else:
-            self.type = None
-        self.context.define_var(ast_node.name, ast_node.readonly,)
-
-class Var(Expression):
-    def __init__(self, ast_node, context):
-        Expression.__init__(self, ast_node)
-        self.name = ast_node.name
-        self.readonly = ast_node.readonly
-        
-        if self.readonly:
-            self.var_ex_mode = ExecutionMode.compile
-        else:
-            self.var_ex_mode = ExecutionMode.runtime
-    
-    def __str__(self):
-        return 'Var(%s, %s)' % (self.name, self.type.name)
-
-    @property
-    def ex_mode(self):
-        return self.var_ex_mode
-
-class VarDef(Definition):
-    def __init__(self, ast_node, context):
-        Node.__init__(self, ast_node)
-        self.var = Var(ast_node, context)
-        if ast_node.value:
-            self.value = create_expression(ast_node.value, context)
-            if self.var.type is None:
-                if self.value.type:
-                    self.var.type = self.value.type
-                else:
-                    self.var.type = Tuple([])
-            else:
-                self.var.type.check_assignable_from(self.value.type, ast_node)
-        else:
-            self.value = None
-            if self.var.type is None:
-                raise ModelError('No type specified', ast_node)
+            self.runtime_depends = []
+            
         if ast_node.type:
             self.type = context.resolve_type(ast_node.type)
+            if self.value:
+                check_assignable_from(self.type, self.value.type, ast_node)
+        else:
+            self.type = self.value.type
+        
+        context.add_term(self.name, self, ast_node)
+        context.assign_value(self.name, None)
 
     def __str__(self):
-        return 'VarDef(%s = %s)' % (self.var, self.value)
+        return 'VarDef(%s %s: %s = %s)' % ('let' if self.readonly else 'var', self.name, self.type, self.value)
 
-    @property
-    def ex_mode(self):
+    def execute(self, context):
         if self.value:
-            return self.value.ex_mode
+            value = self.value.execute(context)
         else:
-            return ExecutionMode.compile
+            value = None
+        context.assign_value(self.name, value)
+
+class VarRef(Expression):
+    def __init__(self, ast_node, var_def, context):
+        Expression.__init__(self, ast_node)
+        self.var_def = var_def
+        self.type = self.var_def.type
+        if context.function == var_def.function or var_def.readonly:
+            self.runtime_depends = self.var_def.runtime_depends
+        else:
+            self.runtime_depends = [self.var_def]
+
+    def execute(self, context):
+        return context.get_value(self.var_def.name)
+
+    def __str__(self):
+        return 'VarRef(%s)' % self.var_def.name
 
 class Value(Expression):
     def __init__(self, value, type, ast_node):
         Expression.__init__(self, ast_node)
         self.value = value
         self.type = type
+        self.runtime_depends = []
 
     def __str__(self):
         return 'Value(%s, %s)' % (self.value, self.type.name)
 
-    @property
-    def ex_mode(self):
-        return ExecutionMode.compile
+    def execute(self, context):
+        return self
 
-class Enum(Type):
-    def __init__(self, ast_node, context):
-        Node.__init__(self, ast_node)
-        self.name = ast_node.name
-        self.values = [Value(value, self, ast_node) for value in ast_node.values]
-
-    def __str__(self):
-        return 'Enum(%s, %s)' % (self.name, [v.value for v in self.values])
-
-class FuncType(Type):
+class FuncType(Node):
     def __init__(self, arg_types, return_type):
         self.arg_types = arg_types
         self.return_type = return_type
@@ -151,244 +120,207 @@ class FuncType(Type):
     def __str__(self):
         return 'FuncType(%s, %s)' % (map(str, self.arg_types), self.return_type)
 
-class Tuple(Type):
-    def __init__(self, members):
-        self.members = members
-        self.name = 'Tuple(%s)' % ', '.join(m.name for m in self.members)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.members == other.members
-
-    def __ne__(self, other):
-        return not(self == other)
-
-    def check_assignable_from(self, other, ast_node):
-        if not self.members and not other:
-            return
-        Type.check_assignable_from(self, other, ast_node)
-
 class Call(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
-        self.callee = create_expression(ast_node.callee, context)
-        self.args = [create_expression(arg, context) for arg in ast_node.args]
+        self.callee = context.create_expression(ast_node.callee)
+        self.args = [context.create_expression(arg) for arg in ast_node.args]
         if not isinstance(self.callee.type, FuncType):
             raise ModelError('Not callable: %s' % self.callee.type, ast_node)
         if len(self.callee.type.arg_types) != len(self.args):
             raise ModelError('Argument count mismatch', ast_node)
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
-            exp_type.check_assignable_from(got_arg.type, ast_node)
+            check_assignable_from(exp_type, got_arg.type, ast_node)
         self.type = self.callee.type.return_type
         
-    def __str__(self):
-        return 'Call[%s](%s, [%s])' % (self.ex_mode, self.callee.name, ', '.join(map(str, self.args)))
-
-    @property
-    def ex_mode(self):
-        res = self.callee.ex_mode
+        self.runtime_depends = self.callee.runtime_depends
         for arg in self.args:
-            res = ExecutionMode.worst(res, arg.ex_mode)
-        return res
+            self.runtime_depends += arg.runtime_depends
 
-class Assignment(Expression):
+    def __str__(self):
+        return '%s(%s)' % (self.callee, ', '.join(map(str, self.args)))
+
+    def execute(self, context):
+        callee = self.callee.execute(context)
+        arg_context = Context(context, self)
+        for arg, expr in zip(callee.args, self.args):
+            val = expr.execute(context)
+            arg_context.assign_value(arg.name, val)
+        return callee.body.execute(arg_context)
+
+class Assignment(Node):
     def __init__(self, ast_node, context):
-        Expression.__init__(self, ast_node)
+        Node.__init__(self, ast_node)
         self.destination = context.resolve_term(ast_node.destination, ast_node)
-        if not isinstance(self.destination, Var):
+        if not isinstance(self.destination, VarDef):
             raise ModelError('Destination is not assignable: %s' % self.destination, ast_node)
-        self.value = create_expression(ast_node.value, context)
-        self.destination.type.check_assignable_from(self.value.type, ast_node)
+        self.value = context.create_expression(ast_node.value)
+        check_assignable_from(self.destination.type, self.value.type, ast_node)
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
+        self.runtime_depends = self.value.runtime_depends
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination, self.value)
 
-    @property
-    def ex_mode(self):
-        return ExecutionMode.worst(self.value.ex_mode, self.destination.ex_mode)
+    def execute(self, context):
+        value = self.value.execute(context)
+        context.assign_value(self.destination.name, value)
 
-class If(Expression):
-    def __init__(self, ast_node, context):
-        Expression.__init__(self, ast_node)
-        self.condition = create_expression(ast_node.condition, context)
-        bool_type = context.resolve_type(ast.SimpleType('Bool'))
-        bool_type.check_assignable_from(self.condition.type, ast_node)
+# class If(Expression):
+#     def __init__(self, ast_node, context):
+#         Expression.__init__(self, ast_node)
+#         self.condition = create_expression(ast_node.condition, context)
+#         bool_type = context.resolve_type(ast.SimpleType('Bool'))
+#         bool_type.check_assignable_from(self.condition.type, ast_node)
         
-        self.on_true = Block(ast_node.on_true, context)
-        if ast_node.on_false:
-            self.on_false = Block(ast_node.on_false, context)
-        else:
-            self.on_false = None
+#         self.on_true = Block(ast_node.on_true, context)
+#         if ast_node.on_false:
+#             self.on_false = Block(ast_node.on_false, context)
+#         else:
+#             self.on_false = None
 
-        if self.on_false and self.on_true.type == self.on_false.type:
-            self.type = self.on_true.type
+#         if self.on_false and self.on_true.type == self.on_false.type:
+#             self.type = self.on_true.type
             
-    def __str__(self):
-        return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
+#     def __str__(self):
+#         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
 
-    @property
-    def ex_mode(self):
-        res = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
-        if self.on_false:
-            res = ExecutionMode.worst(res, self.on_false.ex_mode)
-        return res
+#     @property
+#     def ex_mode(self):
+#         res = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
+#         if self.on_false:
+#             res = ExecutionMode.worst(res, self.on_false.ex_mode)
+#         return res
 
-class While(Expression):
-    def __init__(self, ast_node, context):
-        Expression.__init__(self, ast_node)
-        self.condition = create_expression(ast_node.condition, context)
-        bool_type = context.resolve_type(ast.SimpleType('Bool'))
-        bool_type.check_assignable_from(self.condition.type, ast_node)
-        self.body = Block(ast_node.body, context)
+# class While(Expression):
+#     def __init__(self, ast_node, context):
+#         Expression.__init__(self, ast_node)
+#         self.condition = create_expression(ast_node.condition, context)
+#         bool_type = context.resolve_type(ast.SimpleType('Bool'))
+#         bool_type.check_assignable_from(self.condition.type, ast_node)
+#         self.body = Block(ast_node.body, context)
 
-    def __str__(self):
-        return 'While(%s, %s)' % (self.condition, self.body)
+#     def __str__(self):
+#         return 'While(%s, %s)' % (self.condition, self.body)
 
-    @property
-    def ex_mode(self):
-        return ExecutionMode.worst(self.condition.ex_mode, self.body.ex_mode)
+#     @property
+#     def ex_mode(self):
+#         return ExecutionMode.worst(self.condition.ex_mode, self.body.ex_mode)
 
-def create_expression(ast_node, context):
-    if isinstance(ast_node, ast.Term):
-        return context.resolve_term(ast_node.name, ast_node)
-    elif isinstance(ast_node, ast.Call):
-        return Call(ast_node, context)
-    elif isinstance(ast_node, ast.Assignment):
-        return Assignment(ast_node, context)
-    elif isinstance(ast_node, ast.If):
-        return If(ast_node, context)
-    elif isinstance(ast_node, ast.While):
-        return While(ast_node, context)
-    elif isinstance(ast_node, ast.Value):
-        type = context.resolve_type(ast_node.type)
-        return Value(ast_node.value, type, ast_node)
-    elif isinstance(ast_node, ast.Block):
-        return Block(ast_node, context)
-    else:
-        raise FatalError('unexpected node', ast_node)
 
 class Function(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
-        self.name = ast_node.name
-        self.args = [VarDef(arg, context) for arg in ast_node.args]
+        
         if ast_node.return_type:
             self.return_type = context.resolve_type(ast_node.return_type)
         else:
             self.return_type = None
-
-        arg_context = Context(context)
-        for arg in self.args:
-            arg_context.add_term(arg.var, None)
             
-        self.body = Block(ast_node.body, arg_context)
-        if self.return_type:
-            self.return_type.check_assignable_from(self.body.type, ast_node)
+        while True:
+            try:
+                arg_context = Context(context, self)
+                self.args = [VarDef(arg, arg_context) for arg in ast_node.args]
+                self.body = Block(ast_node.body, arg_context)
+                break
+            except NotCompileTime as e:
+                raise
 
-        arg_types = [arg.var.type for arg in self.args]
+        self.runtime_depends = []
+        if self.return_type:
+            check_assignable_from(self.return_type, self.body.type, ast_node)
+
+        arg_types = [arg.type for arg in self.args]
         self.type = FuncType(arg_types, self.return_type)
 
-        ex_mode = self.ex_mode
-        for arg in self.args:
-            arg.var.var_ex_mode = ex_mode
+    def __str__(self):
+        return 'Func(%s, %s) %s' % (map(str, self.args), self.return_type, self.body)
+
+    def execute(self, context):
+        return self
+
+class PrecompiledExpression(Node):
+    def __init__(self, ast_node, value, expr):
+        Node.__init__(self, ast_node)
+        self.value = value
+        self.expr = expr
+        self.type = value.type
+        self.runtime_depends = []
 
     def __str__(self):
-        return 'Func(%s, %s, %s) %s' % (self.name, map(str, self.args), self.return_type.name if self.return_type else None, self.body)
-
-    @property
-    def ex_mode(self):
-        return self.body.ex_mode
-
-class FuncDef(Definition):
-    def __init__(self, ast_node, context):
-        self.func = Function(ast_node, context)
-
-    def __str__(self):
-        return 'FuncDef(%s)' % self.func
+        return 'PrecompiledExpression(%s)' % self.value
 
 class Context(object):
-    def __init__(self, parent, import_parent_names=False):
-        if import_parent_names:
-            assert parent
-            self.parent = None
-            self.types = dict(parent.types)
-            self.terms = dict(parent.terms)
-            self.names = set(parent.names)
+    def __init__(self, parent, function=None):
+        if not function and parent:
+            function = parent.function
+        self.parent = parent
+        self.function = function
+        self.terms = {}
+        self.values = {}
+
+    def create_expression(self, ast_node):
+        if isinstance(ast_node, ast.Term):
+            var_def = self.resolve_term(ast_node.name, ast_node)
+            if isinstance(var_def, VarDef):
+                return VarRef(ast_node, var_def, self)
+            else:
+                return var_def
+        elif isinstance(ast_node, ast.Func):
+            return Function(ast_node, self)
+        elif isinstance(ast_node, ast.Call):
+            return Call(ast_node, self)
+        elif isinstance(ast_node, ast.If):
+            return If(ast_node, self)
+        elif isinstance(ast_node, ast.While):
+            return While(ast_node, self)
+        elif isinstance(ast_node, ast.Value):
+            vtype = self.resolve_type(ast_node.type)
+            return Value(ast_node.value, vtype, ast_node)
+        elif isinstance(ast_node, ast.Block):
+            return Block(ast_node, self)
         else:
-            self.parent = parent
-            self.types = {}
-            self.terms = {}
-            self.names = set()
+            raise FatalError('unexpected node: %s' % type(ast_node).__name__, ast_node)
 
     def resolve_term(self, name, ast_node):
-        if name not in self.names:
+        if name not in self.terms:
             if self.parent:
                 pres = self.parent.resolve_term(name, ast_node)
                 if pres:
                     return pres
             raise Undefined(name, ast_node)
-        if name not in self.terms:
-            raise KindMismatch(name, ast_node)
         return self.terms[name]
 
     def resolve_type(self, ast_node):
-        if isinstance(ast_node, ast.SimpleType):
-            name = ast_node.name
-            if name not in self.names:
-                if self.parent:
-                    pres = self.parent.resolve_type(ast_node)
-                    if pres:
-                        return pres
-                raise Undefined(name, ast_node)
-            if name not in self.types:
-                raise KindMismatch(name, ast_node)
-            return self.types[name]
-        elif isinstance(ast_node, ast.Tuple):
-            members = [self.resolve_type(member) for member in ast_node.members]
-            return Tuple(members)
+        expr = self.create_expression(ast_node)
+        if len(expr.runtime_depends) > 0:
+            raise NotCompileTime(expr)
+        value = expr.execute(self)
+        if expr != value:
+            return PrecompiledExpression(ast_node, value, expr)
         else:
-            raise FatalError('unexpected node', ast_node)
+            return value
 
-    def add_term(self, term, ast_node, name=None):
-        if name is None:
-            name = term.name
-        if name in self.names:
+    def add_term(self, name, value, ast_node):
+        if name in self.terms:
             raise AlreadyDefined(name, ast_node)
-        self.names.add(name)
-        self.terms[name] = term
+        self.terms[name] = value
 
-    def add_type(self, type, ast_node, name=None):
-        if name is None:
-            name = type.name
-        if name in self.names:
-            raise AlreadyDefined(name, ast_node)
-        self.names.add(name)
-        self.types[name] = type
+    def assign_value(self, name, value):
+        self.values[name] = value
 
-    def add_def(self, ast_node):
-        if isinstance(ast_node, ast.Enum):
-            res = TypeDef(ast_node, self)
-            self.add_type(res.type, ast_node)
-            for value in res.type.values:
-                self.add_term(value, ast_node, value.value)
-        elif isinstance(ast_node, ast.TypeAlias):
-            alias = self.resolve_type(ast_node.target)
-            self.add_type(alias, ast_node, ast_node.name)
-            res = None
-        elif isinstance(ast_node, ast.Var):
-            res = VarDef(ast_node, self)
-            self.add_term(res.var, ast_node)
-        elif isinstance(ast_node, ast.Func):
-            res = FuncDef(ast_node, self)
-            self.add_term(res.func, ast_node)
+    def get_value(self, name):
+        if name in self.values:
+            return self.values[name]
+        elif self.parent:
+            return self.parent.get_value(name)
         else:
-            raise FatalError('unexpected node', ast_node)
-        return res
+            raise Undefined(name, None)
 
 class Block(Expression, Context):
-    def __init__(self, ast_node, parent, import_parent_names=False):
-        Context.__init__(self, parent, import_parent_names)
+    def __init__(self, ast_node, parent):
+        Context.__init__(self, parent)
         Expression.__init__(self, ast_node)
         self.statements = []
         self.type = None
@@ -396,33 +328,32 @@ class Block(Expression, Context):
             self.add_statement(st)
 
     def add_statement(self, ast_node):
-        if isinstance(ast_node, ast.Definition):
-            res = self.add_def(ast_node)
+        if isinstance(ast_node, ast.Var):
+            res = VarDef(ast_node, self)
+        elif isinstance(ast_node, ast.Assignment):
+            res = Assignment(ast_node, self)
         else:
-            res = create_expression(ast_node, self)
+            res = self.create_expression(ast_node)
             self.type = res.type
-        if res is not None:
-            self.statements.append(res)
+        if len(res.runtime_depends) == 0:
+            res.execute(self)
+        self.statements.append(res)
         return res
 
     def _indent(self, text):
         return '\n'.join('\t' + line for line in text.splitlines())
 
     def __str__(self):
-        return 'Block[%s] {\n%s\n}' % (self.ex_mode, '\n'.join(self._indent(str(st)) for st in self.statements))
+        return 'Block {\n%s\n}' % ('\n'.join(self._indent(str(st)) for st in self.statements))
 
-    @property
-    def ex_mode(self):
-        res = ExecutionMode.compile
+    def execute(self, context):
         for st in self.statements:
-            res = ExecutionMode.worst(res, st.ex_mode)
+            res = st.execute(context)
         return res
 
 class Program(Block):
     def __init__(self, ast_node, builtins):
-        Block.__init__(self, ast_node, builtins, True)
-        if self.ex_mode != ExecutionMode.compile:
-            raise NotCompileTime(self)
+        Block.__init__(self, ast_node, builtins)
     
     def __str__(self):
         return '\n'.join(map(str, self.statements))

@@ -99,12 +99,12 @@ def p_expr_term(p):
 
 def p_expr_int(p):
     '''expr : INT'''
-    p[0] = ast.Value(int(p[1]) , ast.SimpleType('Int'))
+    p[0] = ast.Value(int(p[1]) , ast.Term('Int'))
     add_srcmap(p, 1)
 
 def p_expr_float(p):
     '''expr : FLOAT'''
-    p[0] = ast.Value(float(p[1]), ast.SimpleType('Float'))
+    p[0] = ast.Value(float(p[1]), ast.Term('Float'))
     add_srcmap(p, 1)
 
 def p_expr_block(p):

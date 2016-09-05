@@ -12,22 +12,6 @@ class Expression(Node):
 class Definition(Node):
     name = None
 
-class Enum(Definition):
-    def __init__(self, name, values):
-        self.name = name
-        self.values = values
-
-    def __str__(self):
-        return 'Enum(%s, %s)' % (self.name, self.values)
-
-class TypeAlias(Definition):
-    def __init__(self, name, target):
-        self.name = name
-        self.target = target
-
-    def __str__(self):
-        return 'TypeAlias(%s = %s)' % (self.name, self.target)
-
 class Var(Definition):
     def __init__(self, name, type, readonly=True, value=None):
         self.name = name
@@ -79,13 +63,6 @@ class Term(Expression):
     def __str__(self):
         return 'Term(%s)' % self.name
 
-class SimpleType(Type):
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return 'Type(%s)' % self.name
-
 class Tuple(Type):
     def __init__(self, members):
         self.members = members
@@ -132,4 +109,5 @@ class Block(Expression):
         return res
         
 class Program(Block):
-    pass
+    def __str__(self):
+        return 'Program %s' % Block.__str__(self)
