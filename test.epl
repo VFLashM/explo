@@ -22,10 +22,21 @@ let show = fn(i: Int) {
 
 let main = fn() {
     var i = 5
+    var j = 0
     while gt(i, 0) {
-          show(i)
+          j = add(j, 1)
           i = sub(i, 1)
-          show(i)
     }
+    var k = add(j, 0)   
+    iprint(k)
+    iprint(0)
+
+    i = 5
+    while gt(i, 0) {
+          bprint(gt(i, 0))
+          iprint(i)
+          i = sub(i, 1)
+    }
+    bprint(gt(i, 0))
     i
 }
