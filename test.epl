@@ -16,6 +16,10 @@ let ignore = fn(v: Some) {}
 
 var gvar = 4
 
+let show = fn(i: Int) {
+    print(i)
+}
+
 let main = fn() {
     var a = first(1, pass(2))
     a = 5

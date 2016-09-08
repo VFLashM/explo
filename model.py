@@ -147,11 +147,8 @@ class Call(Expression):
 
     def execute(self, context):
         callee = self.callee.execute(context)
-        arg_context = Context(context, self)
-        for arg, expr in zip(callee.args, self.args):
-            val = expr.execute(context)
-            arg_context.assign_value(arg.name, val)
-        return callee.body.execute(arg_context)
+        args = [arg.execute(context) for arg in self.args]
+        return callee.call(context, args)
 
 class Assignment(Node):
     def __init__(self, ast_node, context):
@@ -250,6 +247,12 @@ class Function(Expression):
     def execute(self, context):
         return self
 
+    def call(self, context, args):
+        arg_context = Context(context, self)
+        for arg, val in zip(self.args, args):
+            arg_context.assign_value(arg.name, val)
+        return self.body.execute(arg_context)
+
 class PrecompiledExpression(Node):
     def __init__(self, ast_node, value, expr):
         Node.__init__(self, ast_node)
@@ -259,19 +262,34 @@ class PrecompiledExpression(Node):
         self.runtime_depends = []
 
     def __str__(self):
-        return 'PrecompiledExpression(%s)' % self.value
+        return '!(%s)' % self.expr
 
     def execute(self, context):
         return self.value
 
-class Context(object):
+class RuntimeContext(object):
+    def __init__(self, parent):
+        self.parent = parent
+        self.values = {}
+
+    def assign_value(self, name, value):
+        self.values[name] = value
+
+    def get_value(self, name):
+        if name in self.values:
+            return self.values[name]
+        elif self.parent:
+            return self.parent.get_value(name)
+        else:
+            raise Undefined(name, None)
+
+class Context(RuntimeContext):
     def __init__(self, parent, function=None):
+        RuntimeContext.__init__(self, parent)
         if not function and parent:
             function = parent.function
-        self.parent = parent
         self.function = function
         self.terms = {}
-        self.values = {}
 
     def _create_expression(self, ast_node):
         if isinstance(ast_node, ast.Term):
@@ -298,7 +316,7 @@ class Context(object):
 
     def create_expression(self, ast_node):
         res = self._create_expression(ast_node)
-        if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef)):
+        if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef, Value)):
             value = res.execute(self)
             return PrecompiledExpression(ast_node, value, res)
         else:
@@ -327,17 +345,6 @@ class Context(object):
         if name in self.terms:
             raise AlreadyDefined(name, ast_node)
         self.terms[name] = value
-
-    def assign_value(self, name, value):
-        self.values[name] = value
-
-    def get_value(self, name):
-        if name in self.values:
-            return self.values[name]
-        elif self.parent:
-            return self.parent.get_value(name)
-        else:
-            raise Undefined(name, None)
 
 class Block(Expression, Context):
     def __init__(self, ast_node, parent):
@@ -401,5 +408,14 @@ if __name__ == '__main__':
     program = parse.parse(content)
     b = builtins.Builtins()
     m = model.Program(program, b)
+
     print m
+    print 'EXEUTION'
+    main = m.resolve_term('main', None)
+    print m.values
+    main = m.get_value('main')
+    main.call()
+    print main
+    #m.execute(context)
+    
     
