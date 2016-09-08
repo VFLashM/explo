@@ -17,7 +17,7 @@ let ignore = fn(v: Some) {}
 var gvar = 4
 
 let show = fn(i: Int) {
-    print(i)
+    iprint(i)
 }
 
 let main = fn() {

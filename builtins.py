@@ -57,39 +57,38 @@ class Builtins(model.Context):
     def __init__(self, stdout=sys.stdout):
         model.Context.__init__(self, None)
 
+        def abort(*args):
+            raise error.InterpreterError('abort')
+        self.add_function('abort', [], None, abort, False)
+
+        bool_type = BuiltinType('Bool')
+        self.add_term('Bool', bool_type, None)
+        self.add_term('true', model.Value(True, bool_type, None), None)
+        self.add_term('false', model.Value(False, bool_type, None), None)
+        
+        self.add_function('bprint', ['Bool'], None, lambda x, args: stdout.write(str(args[0]) + '\n'), False)
+        self.add_function('and', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] and args[1])
+        self.add_function('or', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] or args[1])
+        self.add_function('xor', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
+        self.add_function('not', ['Bool'], 'Bool', lambda x, args: not args[0])
+        self.add_function('beq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] == args[1])
+        self.add_function('bneq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
+
         self.add_term('Int', BuiltinType('Int'), None)
-        self.add_function('print', ['Int'], None, lambda x, args: stdout.write(str(args[0]) + '\n'), False)
+        
+        self.add_function('iprint', ['Int'], None, lambda x, args: stdout.write(str(args[0]) + '\n'), False)
+        self.add_function('add', ['Int', 'Int'], 'Int', lambda x, args: args[0] + args[1])
+        self.add_function('sub', ['Int', 'Int'], 'Int', lambda x, args: args[0] - args[1])
+        self.add_function('mul', ['Int', 'Int'], 'Int', lambda x, args: args[0] * args[1])
+        self.add_function('div', ['Int', 'Int'], 'Int', lambda x, args: args[0] / args[1])
+        self.add_function('mod', ['Int', 'Int'], 'Int', lambda x, args: args[0] % args[1])
+        self.add_function('ieq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] == args[1])
+        self.add_function('ineq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] != args[1])
+        self.add_function('gt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] > args[1])
+        self.add_function('geq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] >= args[1])
+        self.add_function('lt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] < args[1])
+        self.add_function('leq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] <= args[1])
 
-        # def abort(*args):
-    #         raise error.InterpreterError('abort')
-        
-    #     self.add_type(BuiltinAnyType(), None)
-         
-    #     self.add_function('abort', [], None, abort, model.ExecutionMode.runtime)
-        
-    #     bool_type = self.add_def(ast.Enum('Bool', ['false', 'true'])).type
-    #     for v in bool_type.values:
-    #         v.value = v.value == 'true'
-    #     self.add_function('and', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] and args[1])
-    #     self.add_function('or', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] or args[1])
-    #     self.add_function('xor', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
-    #     self.add_function('not', ['Bool'], 'Bool', lambda x, args: not args[0])
-    #     self.add_function('beq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] == args[1])
-    #     self.add_function('bneq', ['Bool', 'Bool'], 'Bool', lambda x, args: args[0] != args[1])
-        
-    #     self.add_type(BuiltinType('Int'), None)
-    #     self.add_function('add', ['Int', 'Int'], 'Int', lambda x, args: args[0] + args[1])
-    #     self.add_function('sub', ['Int', 'Int'], 'Int', lambda x, args: args[0] - args[1])
-    #     self.add_function('mul', ['Int', 'Int'], 'Int', lambda x, args: args[0] * args[1])
-    #     self.add_function('div', ['Int', 'Int'], 'Int', lambda x, args: args[0] / args[1])
-    #     self.add_function('mod', ['Int', 'Int'], 'Int', lambda x, args: args[0] % args[1])
-    #     self.add_function('ieq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] == args[1])
-    #     self.add_function('ineq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] != args[1])
-    #     self.add_function('gt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] > args[1])
-    #     self.add_function('geq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] >= args[1])
-    #     self.add_function('lt', ['Int', 'Int'], 'Bool', lambda x, args: args[0] < args[1])
-    #     self.add_function('leq', ['Int', 'Int'], 'Bool', lambda x, args: args[0] <= args[1])
-
-    def add_function(self, name, args, return_type, impl, compile_time):
+    def add_function(self, name, args, return_type, impl, compile_time=True):
         fn = BuiltinFunction(name, args, return_type, impl, compile_time, self)
         self.add_term(name, fn, None)
