@@ -168,7 +168,7 @@ class Assignment(Node):
             self.runtime_depends.append(self.destination)
 
     def __str__(self):
-        return 'Assignment(%s = %s)' % (self.destination, self.value)
+        return 'Assignment(%s = %s)' % (self.destination.name, self.value)
 
     def execute(self, context):
         value = self.value.execute(context)
@@ -246,7 +246,7 @@ class Function(Expression):
         self.type = FuncType(arg_types, self.return_type)
 
     def __str__(self):
-        return 'Func[%s](%s, %s) %s' % (len(self.runtime_depends), map(str, self.args), self.return_type, self.body)
+        return 'Func[%s](%s, %s) %s' % (len(self.call_runtime_depends), map(str, self.args), self.return_type, self.body)
 
     def execute(self, context):
         return self
