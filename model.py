@@ -168,10 +168,15 @@ class Assignment(Node):
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
         self.runtime_depends = list(self.value.runtime_depends)
-        self.destination.runtime_depends = list(self.runtime_depends)
+
+        if self.destination in self.runtime_depends:
+            self.destination.runtime_depends += list(self.runtime_depends)
+            self.destination.runtime_depends.remove(self.destination)
+        else:
+            self.destination.runtime_depends = list(self.runtime_depends)
+        
         if self.destination.owner != context.owner:
             self.runtime_depends.append(self.destination)
-        
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination.name, self.value)
@@ -217,9 +222,18 @@ class While(Expression):
         check_assignable_from(bool_type, self.condition.type, ast_node)
         self.body = Block(ast_node.body, self.context)
         self.runtime_depends = self.condition.runtime_depends + self.body.runtime_depends
+        for rd in self.runtime_depends:
+            if not isinstance(rd, VarDef):
+                break
+            if len(rd.runtime_depends) > 0:
+                break
+            if rd.owner != context.owner:
+                break
+        else:
+            self.runtime_depends = []
 
     def __str__(self):
-        return 'While(%s, %s)' % (self.condition, self.body)
+        return 'While[%s](%s, %s)' % (len(self.runtime_depends), self.condition, self.body)
 
     def execute(self, context):
         while self.condition.execute(context).value:
@@ -271,7 +285,10 @@ class PrecompiledExpression(Node):
         Node.__init__(self, ast_node)
         self.value = value
         self.expr = expr
-        self.type = value.type
+        if value:
+            self.type = value.type
+        else:
+            self.type = None
         self.runtime_depends = []
 
     def __str__(self):
@@ -341,6 +358,7 @@ class Context(RuntimeContext):
         res = self._create_expression(ast_node)
         if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef, Value)):
             value = res.execute(self)
+            assert value or not res.type
             return PrecompiledExpression(ast_node, value, res)
         else:
             return res
