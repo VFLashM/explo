@@ -21,9 +21,11 @@ let show = fn(i: Int) {
 }
 
 let main = fn() {
-    var a = first(1, pass(2))
-    a = 5
-    gvar = 6
-    show(a)
-    pass(a)
+    var i = 5
+    while gt(i, 0) {
+          show(i)
+          i = sub(i, 1)
+          show(i)
+    }
+    i
 }

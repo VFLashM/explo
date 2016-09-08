@@ -52,7 +52,11 @@ class Expression(Node):
         self.type = None
 
 def check_assignable_from(a, b, c):
-    pass
+    if isinstance(a, PrecompiledExpression) and isinstance(b, PrecompiledExpression):
+        a = a.value
+        b = b.value
+    if a != b:
+        raise TypeMismatch(a, b, c)
 
 class VarDef(Node):
     def __init__(self, ast_node, context):
@@ -75,12 +79,12 @@ class VarDef(Node):
             self.type = self.value.type
         
         context.add_term(self.name, self, ast_node)
-        context.assign_value(self.name, None)
 
     def __str__(self):
         return 'VarDef(%s %s: %s = %s)' % ('let' if self.readonly else 'var', self.name, self.type, self.value)
 
     def execute(self, context):
+        context.register_value(self.name)
         if self.value:
             value = self.value.execute(context)
         else:
@@ -174,47 +178,49 @@ class Assignment(Node):
         value = self.value.execute(context)
         context.assign_value(self.destination.name, value)
 
-# class If(Expression):
-#     def __init__(self, ast_node, context):
-#         Expression.__init__(self, ast_node)
-#         self.condition = create_expression(ast_node.condition, context)
-#         bool_type = context.resolve_type(ast.SimpleType('Bool'))
-#         bool_type.check_assignable_from(self.condition.type, ast_node)
-        
-#         self.on_true = Block(ast_node.on_true, context)
-#         if ast_node.on_false:
-#             self.on_false = Block(ast_node.on_false, context)
-#         else:
-#             self.on_false = None
+class If(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
+        self.condition = context.create_expression(ast_node.condition)
+        bool_type = context.resolve_type(ast.Term('Bool'))
+        check_assignable_from(bool_type, self.condition.type, ast_node)
 
-#         if self.on_false and self.on_true.type == self.on_false.type:
-#             self.type = self.on_true.type
+        self.on_true = Block(ast_node.on_true, context)
+        self.runtime_depends = self.condition.runtime_depends + self.on_true.runtime_depends
+        if ast_node.on_false:
+            self.on_false = Block(ast_node.on_false, context)
+            self.runtime_depends += self.on_false.runtime_depends
+        else:
+            self.on_false = None
+
+        if self.on_false and self.on_true.type == self.on_false.type:
+            self.type = self.on_true.type
             
-#     def __str__(self):
-#         return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
+    def __str__(self):
+        return 'If(%s, %s, %s)' % (self.condition, self.on_true, self.on_false)
 
-#     @property
-#     def ex_mode(self):
-#         res = ExecutionMode.worst(self.condition.ex_mode, self.on_true.ex_mode)
-#         if self.on_false:
-#             res = ExecutionMode.worst(res, self.on_false.ex_mode)
-#         return res
+    def execute(self, context):
+        condition = self.condition.execute(context)
+        if condition.value:
+            return self.on_true.execute(context)
+        elif self.on_false:
+            return self.on_false.execute(context)
 
-# class While(Expression):
-#     def __init__(self, ast_node, context):
-#         Expression.__init__(self, ast_node)
-#         self.condition = create_expression(ast_node.condition, context)
-#         bool_type = context.resolve_type(ast.SimpleType('Bool'))
-#         bool_type.check_assignable_from(self.condition.type, ast_node)
-#         self.body = Block(ast_node.body, context)
+class While(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
+        self.condition = context.create_expression(ast_node.condition)
+        bool_type = context.resolve_type(ast.Term('Bool'))
+        check_assignable_from(bool_type, self.condition.type, ast_node)
+        self.body = Block(ast_node.body, context)
+        self.runtime_depends = self.condition.runtime_depends + self.body.runtime_depends
 
-#     def __str__(self):
-#         return 'While(%s, %s)' % (self.condition, self.body)
+    def __str__(self):
+        return 'While(%s, %s)' % (self.condition, self.body)
 
-#     @property
-#     def ex_mode(self):
-#         return ExecutionMode.worst(self.condition.ex_mode, self.body.ex_mode)
-
+    def execute(self, context):
+        while self.condition.execute(context).value:
+            self.body.execute(context)
 
 class Function(Expression):
     def __init__(self, ast_node, context):
@@ -276,8 +282,18 @@ class RuntimeContext(object):
         self.parent = parent
         self.values = {}
 
+    def register_value(self, name):
+        if name in self.values:
+            raise AlreadyDefined(name, None)
+        self.values[name] = None
+
     def assign_value(self, name, value):
-        self.values[name] = value
+        if name in self.values:
+            self.values[name] = value
+        elif self.parent:
+            self.parent.assign_value(name, value)
+        else:
+            raise Undefined(name, None)
 
     def get_value(self, name):
         if name in self.values:
