@@ -2,11 +2,10 @@ import sys
 import os
 import logging
 import model
-import interpreter
 import error
-import compiler
+#import compiler
 import parse
-import transpiler
+#import transpiler
 import traceback
 
 logger = logging.getLogger('test')
@@ -16,7 +15,7 @@ ERROR_TYPES = (
     error.CodeSyntaxError,
     parse.ParserError,
     model.ModelError,
-    transpiler.InlinerError,
+    #transpiler.InlinerError,
     error.ExecutionTimeError,
     error.InterpreterError,
     )
@@ -105,12 +104,12 @@ class TestFile(object):
         if verbose: print 'Checking normal run'
         try:
             if verbose: print 'Building model'
-            m = interpreter.build_model(good, self)
+            m = model.build_model(good, self)
             if not self.no_run:
                 if run_interpreter:
                     if verbose: print 'Checking interpreter'
                     self.output = []
-                    interpreter.run_model(m)
+                    model.run_model(m)
                     self.check_output(good)
                 if run_compiler:
                     if verbose: print 'Checking compiler'
@@ -126,7 +125,7 @@ class TestFile(object):
             if verbose: print 'Checking error run: %s %s' % (etype.__name__, message)
             if verbose: print 'Building model'
             try:
-                m = interpreter.build_model(bad, self)
+                m = model.build_model(bad, self)
             except Exception as e:
                 if not issubclass(type(e), etype) or message not in str(e):
                     raise WrongFailure('model', bad, edef, e), None, sys.exc_info()[2]
@@ -141,7 +140,7 @@ class TestFile(object):
             if run_interpreter:
                 if verbose: print 'Checking interpreter'
                 try:
-                    interpreter.run_model(m)
+                    model.run_model(m)
                 except Exception as e:
                     if not issubclass(type(e), etype) or message not in str(e):
                         raise WrongFailure('interpreter', bad, edef, e), None, sys.exc_info()[2]

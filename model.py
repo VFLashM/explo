@@ -1,4 +1,5 @@
 #!env python2.7
+import sys
 import ast
 import error
 
@@ -431,30 +432,38 @@ class Program(Block):
     def __str__(self):
         return '\n'.join(map(str, self.statements))
 
-if __name__ == '__main__':
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
+def build_model(code, output=sys.stdout):
     import model # sigh, import self to have matching classes in builtins and here
     import parse
     import builtins
 
+    program_ast = parse.parse(code)
+    builtins_context = builtins.Builtins(output)
+    program_model = model.Program(program_ast, builtins_context)
+    return program_model
+
+def run_model(m):
+    #main = m.resolve_term('main', None)
+    main = m.get_value('main')
+    res = main.call(m, [])
+    if res:
+        return res.value
+
+if __name__ == '__main__':
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--run', action='store_true')
     parser.add_argument('path')
     args = parser.parse_args()
     
     content = open(args.path).read()
-    
-    program = parse.parse(content)
-    b = builtins.Builtins()
-    m = model.Program(program, b)
-
+    m = build_model(content)
     print m
-    print 'EXEUTION'
-    main = m.resolve_term('main', None)
-    main = m.get_value('main')
-    res = main.call(m, [])
-    print 'res=%s' % res
+    if args.run:
+        res = run_model(m)
+        print 'res=%s' % res
     
     
