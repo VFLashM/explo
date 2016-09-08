@@ -278,6 +278,7 @@ class Function(Expression):
     def call(self, context, args):
         arg_context = Context(context, self)
         for arg, val in zip(self.args, args):
+            arg_context.register_value(arg.name)
             arg_context.assign_value(arg.name, val)
         return self.body.execute(arg_context)
 
