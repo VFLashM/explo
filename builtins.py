@@ -51,7 +51,7 @@ class BuiltinFunction(model.Builtin):
             return model.Value(ret_value, self.type.return_type, None)
 
     def __str__(self):
-        return 'BuiltinFunction[%s](%s)' % (len(self.runtime_depends), self.name)
+        return 'BuiltinFunction[%s](%s)' % (len(self.call_runtime_depends), self.name)
 
 class Builtins(model.Context):
     def __init__(self, stdout=sys.stdout):
