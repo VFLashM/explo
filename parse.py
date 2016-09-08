@@ -82,6 +82,16 @@ def p_block(p):
     '''block : LBRACE statement_list RBRACE'''
     p[0] = ast.Block(p[2])
     add_srcmap(p, 1)
+
+def p_def_fn(p):
+    '''def : FN ID LPAREN arg_def_list RPAREN block
+           | FN ID LPAREN arg_def_list RPAREN ARROW expr block'''
+    if len(p) >= 8:
+        f = ast.Func(p[4], p[7], p[8])
+    else:
+        f = ast.Func(p[4], None, p[6])
+    p[0] = ast.Var(p[2], None, True, f)
+    add_srcmap(p, 2)
     
 def p_expr_fn(p):
     '''expr : FN LPAREN arg_def_list RPAREN block
