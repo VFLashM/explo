@@ -35,10 +35,11 @@ class BuiltinFunction(model.Builtin):
         self.type = model.FuncType(arg_types, return_type)
         
         self.impl = impl
+        self.runtime_depends = []
         if compile_time:
-            self.runtime_depends = []
+            self.call_runtime_depends = []
         else:
-            self.runtime_depends = [self]
+            self.call_runtime_depends = [self]
 
     def execute(self, context):
         return self

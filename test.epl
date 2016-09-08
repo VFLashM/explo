@@ -24,5 +24,6 @@ let main = fn() {
     var a = first(1, pass(2))
     a = 5
     gvar = 6
+    show(a)
     pass(a)
 }

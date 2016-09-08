@@ -136,11 +136,14 @@ class Call(Expression):
         for exp_type, got_arg in zip(self.callee.type.arg_types, self.args):
             check_assignable_from(exp_type, got_arg.type, ast_node)
         self.type = self.callee.type.return_type
-        
+
         self.runtime_depends = set(self.callee.runtime_depends)
         for arg in self.args:
             self.runtime_depends |= set(arg.runtime_depends)
         self.runtime_depends = list(self.runtime_depends)
+        if len(self.callee.runtime_depends) == 0:
+            callee = self.callee.execute(context)
+            self.runtime_depends += callee.call_runtime_depends
 
     def __str__(self):
         return '%s(%s)' % (self.callee, ', '.join(map(str, self.args)))
@@ -233,7 +236,8 @@ class Function(Expression):
             except NotCompileTime as e:
                 raise
 
-        self.runtime_depends = filter(lambda x: x not in self.args, self.body.runtime_depends)
+        self.runtime_depends = []
+        self.call_runtime_depends = filter(lambda x: x not in self.args, self.body.runtime_depends)
 
         if self.return_type:
             check_assignable_from(self.return_type, self.body.type, ast_node)
@@ -412,10 +416,8 @@ if __name__ == '__main__':
     print m
     print 'EXEUTION'
     main = m.resolve_term('main', None)
-    print m.values
     main = m.get_value('main')
-    main.call()
-    print main
-    #m.execute(context)
+    res = main.call(m, [])
+    print 'res=%s' % res
     
     
