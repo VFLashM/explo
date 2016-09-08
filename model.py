@@ -66,7 +66,7 @@ class VarDef(Node):
         self.name = ast_node.name
         if ast_node.value:
             self.value = context.create_expression(ast_node.value)
-            self.runtime_depends = self.value.runtime_depends
+            self.runtime_depends = list(self.value.runtime_depends)
         else:
             self.value = None
             self.runtime_depends = []
@@ -97,7 +97,7 @@ class VarRef(Expression):
         self.var_def = var_def
         self.type = self.var_def.type
         if context.owner == var_def.owner or var_def.readonly:
-            self.runtime_depends = self.var_def.runtime_depends
+            self.runtime_depends = list(self.var_def.runtime_depends)
         else:
             self.runtime_depends = [self.var_def]
 
@@ -168,8 +168,10 @@ class Assignment(Node):
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
         self.runtime_depends = list(self.value.runtime_depends)
+        self.destination.runtime_depends = list(self.runtime_depends)
         if self.destination.owner != context.owner:
             self.runtime_depends.append(self.destination)
+        
 
     def __str__(self):
         return 'Assignment(%s = %s)' % (self.destination.name, self.value)
