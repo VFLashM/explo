@@ -209,10 +209,11 @@ class If(Expression):
 class While(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
-        self.condition = context.create_expression(ast_node.condition)
-        bool_type = context.resolve_type(ast.Term('Bool'))
+        self.context = Context(context, self)
+        self.condition = self.context.create_expression(ast_node.condition)
+        bool_type = self.context.resolve_type(ast.Term('Bool'))
         check_assignable_from(bool_type, self.condition.type, ast_node)
-        self.body = Block(ast_node.body, context)
+        self.body = Block(ast_node.body, self.context)
         self.runtime_depends = self.condition.runtime_depends + self.body.runtime_depends
 
     def __str__(self):
