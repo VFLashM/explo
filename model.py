@@ -61,7 +61,7 @@ def check_assignable_from(a, b, c):
 class VarDef(Node):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
-        self.function = context.function
+        self.owner = context.owner
         self.readonly = ast_node.readonly
         self.name = ast_node.name
         if ast_node.value:
@@ -96,7 +96,7 @@ class VarRef(Expression):
         Expression.__init__(self, ast_node)
         self.var_def = var_def
         self.type = self.var_def.type
-        if context.function == var_def.function or var_def.readonly:
+        if context.owner == var_def.owner or var_def.readonly:
             self.runtime_depends = self.var_def.runtime_depends
         else:
             self.runtime_depends = [self.var_def]
@@ -168,7 +168,7 @@ class Assignment(Node):
         if self.destination.readonly:
             raise ModelError('Variable is immutable: %s' % self.destination, ast_node)
         self.runtime_depends = list(self.value.runtime_depends)
-        if self.destination.function != context.function:
+        if self.destination.owner != context.owner:
             self.runtime_depends.append(self.destination)
 
     def __str__(self):
@@ -304,11 +304,11 @@ class RuntimeContext(object):
             raise Undefined(name, None)
 
 class Context(RuntimeContext):
-    def __init__(self, parent, function=None):
+    def __init__(self, parent, owner=None):
         RuntimeContext.__init__(self, parent)
-        if not function and parent:
-            function = parent.function
-        self.function = function
+        if not owner and parent:
+            owner = parent.owner
+        self.owner = owner
         self.terms = {}
 
     def _create_expression(self, ast_node):
