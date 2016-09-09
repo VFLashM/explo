@@ -455,8 +455,12 @@ class Context(RuntimeContext):
         self.terms[name] = value
 
 class Block(Expression, Context):
-    def __init__(self, ast_node, parent):
-        Context.__init__(self, parent)
+    def __init__(self, ast_node, parent, import_terms=False):
+        if import_terms:
+            Context.__init__(self, None)
+            self.terms = parent.terms.copy()
+        else:
+            Context.__init__(self, parent)
         Expression.__init__(self, ast_node)
         self.runtime_depends = []
         self.statements = []
@@ -493,7 +497,7 @@ class Block(Expression, Context):
 
 class Program(Block):
     def __init__(self, ast_node, builtins):
-        Block.__init__(self, ast_node, builtins)
+        Block.__init__(self, ast_node, builtins, True)
     
     def __str__(self):
         return '\n'.join(map(str, self.statements))

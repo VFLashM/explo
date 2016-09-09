@@ -103,21 +103,26 @@ def p_expr_fn(p):
     add_srcmap(p, 2)
 
 def p_term_list(p):
-    '''term_list :
-                 | ID
+    '''term_list : ID
                  | term_list COMMA ID'''
     _process_list(p, sep=1)
 
 def p_expr_enum(p):
-    '''expr : ENUM LBRACE term_list RBRACE
-            | ENUM LBRACE term_list COMMA RBRACE'''
-    p[0] = ast.Enum(p[3])
+    '''expr : ENUM LBRACE term_list optional_comma RBRACE
+            | ENUM LBRACE RBRACE'''
+    if len(p) <= 4:
+        p[0] = ast.Enum([])
+    else:
+        p[0] = ast.Enum(p[3])
     add_srcmap(p, 1)
 
 def p_def_enum(p):
-    '''def : ENUM ID LBRACE term_list RBRACE
-           | ENUM ID LBRACE term_list COMMA RBRACE'''
-    e = ast.Enum(p[4])
+    '''def : ENUM ID LBRACE term_list optional_comma RBRACE
+           | ENUM ID LBRACE RBRACE'''
+    if len(p) < 5:
+        e = ast.Enum([])
+    else:
+        e = ast.Enum(p[4])
     p[0] = ast.Var(p[2], None, True, e)
     add_srcmap(p, 2)
 
