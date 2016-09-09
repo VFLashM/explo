@@ -3,14 +3,14 @@ fn assert(c: Bool) { if not(c) { abort() } }
 var a = { 1 }
 var b: Int = { true 2 }
 var c = {}
-var d: () = {}
+var d: Unit = {}
 var e: Int = {} //<ModelError type mismatch
 var f: Bool = { true 5 } //<ModelError type mismatch
 
 fn main() {
-   var a = { print(1) 12 }
+   var a = { iprint(1) 12 }
    assert(ieq(a, 12))
-   var b = { print(2) true }
+   var b = { iprint(2) true }
    assert(b)
    var c = { { { 1 } } }
    assert(ieq(c, 1))
