@@ -59,6 +59,7 @@ class State(object):
         for key in self.flags:
             setattr(self, key, False)
         self.temp_idx = 0
+        self.main = None
 
     def unique_name(self, name):
         self.temp_idx += 1
@@ -158,7 +159,12 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     if self.readonly:
         body.string('const')
     self.type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-    body.string(self.name)
+    if self.name == 'main' and self.owner == None:
+        setattr(self, 'transname', tstate.unique_name('main'))
+        tstate.main = self
+    else:
+        setattr(self, 'transname', self.name)
+    body.string(self.transname)
     if self.value:
         body.string('=')
         inlined = self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
@@ -219,7 +225,7 @@ def Function_transpile(self, tstate, prelude, body, result):
 
 @patch
 def VarRef_transpile(self, tstate, prelude, body, result):
-    result.string(self.var_def.name)
+    result.string(self.var_def.transname)
 
 @patch
 def While_transpile(self, tstate, prelude, body, result):
@@ -296,6 +302,9 @@ def transpile_model(m):
     tstate = State()
     output = Output()
     m.transpile(tstate, output.inserter(), output.inserter(), None)
+    if tstate.main:
+        tstate.main.type.return_type.transpile(tstate, output.inserter(), output.inserter(), output)
+        output.string('main() { return %s(); }' % tstate.main.transname)
     return str(output)
 
 if __name__ == '__main__':
