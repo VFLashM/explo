@@ -78,13 +78,18 @@ class Expression(Node):
         #self.runtime_depends = None
         self.type = None
 
+def is_unit_type(a):
+    if isinstance(a, PrecompiledExpression):
+        a = a.value
+    return isinstance(a, Builtin) and a.name == 'Unit'
+
 def check_assignable_from(a, b, c):
+    if is_unit_type(a):
+        return True
     if isinstance(a, PrecompiledExpression):
         a = a.value
     if isinstance(b, PrecompiledExpression):
         b = b.value
-    if isinstance(a, Builtin) and a.name == 'Unit':
-        return True
     if a != b:
         raise TypeMismatch(a, b, c)
 

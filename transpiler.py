@@ -2,7 +2,6 @@
 import sys
 import contextlib
 import model
-import interpreter
 import error
 
 class InlinerError(error.CompileTimeError):
@@ -60,11 +59,13 @@ class State(object):
         for key in self.flags:
             setattr(self, key, False)
         self.temp_idx = 0
-        self.istate = interpreter.State()
+
+    def unique_name(self, name):
+        self.temp_idx += 1
+        return '__%s_%s' % (name, self.temp_idx)
 
     def temp_var(self, name, type, output):
-        self.temp_idx += 1
-        varname = '__%s_%s' % (name, self.temp_idx)
+        varname = self.unique_name(name)
 
         type.transpile(self, output.inserter(), output.inserter(), output)
         output.string(varname)
@@ -83,19 +84,21 @@ class State(object):
         for name, value in old.items():
             setattr(self, name, value)
 
+def patch(fn):
+    tname, mname = fn.__name__.split('_')
+    type = getattr(model, tname)
+    setattr(type, mname, fn)
+    return fn
+
+@patch
 def Node_transpile(self, tstate, prelude, body, output):
     raise NotImplementedError(type(self))
 
-def inline(expr, tstate, prelude, body, result):
-    if expr.ex_mode == model.ExecutionMode.compile and expr.type is not None:
-        try:
-            res = expr.execute(tstate.istate)
-        except error.InterpreterError as e:
-            raise InlinerError(e), None, sys.exc_info()[2]
-        res.transpile(tstate, prelude, body, result)
-        return True
-    return False
+@patch
+def Builtin_transpile(self, tstate, prelude, body, output):
+    output.string(self.name)
 
+@patch
 def Block_transpile(self, tstate, prelude, body, result):
     if not self.statements:
         if result:
@@ -103,8 +106,6 @@ def Block_transpile(self, tstate, prelude, body, result):
         else:
             body.string('{}')
         return
-    if inline(self, tstate, prelude, body, result):
-        return True
     if len(self.statements) == 1 and result:
         self.statements[0].transpile(tstate, prelude, body, result)
         return
@@ -130,33 +131,41 @@ def Block_transpile(self, tstate, prelude, body, result):
     if outvar:
         result.string(outvar)
 
+@patch
 def Program_transpile(self, tstate, prelude, body, result):
     prelude.line('#include "builtins.h"')
     for st in self.statements:
         st.transpile(tstate, prelude, body, None)
 
+@patch
+def FuncType_transpile(self, tstate, prelude, body, result):
+    if not hasattr(self, 'transname'):
+        setattr(self, 'transname', tstate.unique_name('Functype'));
+        body.string('typedef')
+        self.return_type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        body.string('(*')
+        body.string(self.transname)
+        body.string(')(')
+        for idx, atype in enumerate(self.arg_types):
+            if idx != 0:
+                body.string(',')
+            atype.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        body.string(');')
+    result.string(self.transname)
+
+@patch
 def VarDef_transpile(self, tstate, prelude, body, result):
-    if self.var.readonly:
+    if self.readonly:
         body.string('const')
-    self.var.type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-    body.string(self.var.name)
+    self.type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+    body.string(self.name)
     if self.value:
         body.string('=')
         inlined = self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-        if self.var.readonly and inlined:
-            self.execute(tstate.istate)
     body.line(';')
-    
-def Type_transpile(self, tstate, prelude, body, result):
-    result.string(self.name)
 
-def Tuple_transpile(self, tstate, prelude, body, result):
-    if self.members:
-        raise NotImplementedError()
-    else:
-        result.string('Unit')
-
-def TypeDef_transpile(self, tstate, prelude, body, result):
+@patch
+def Enum_transpile(self, tstate, prelude, body, result):
     body.string('typedef enum')
     body.string('{')
     for idx, value in enumerate(self.type.values):
@@ -169,6 +178,7 @@ def TypeDef_transpile(self, tstate, prelude, body, result):
     body.string(self.type.name)
     body.line(';')
 
+@patch
 def Value_transpile(self, tstate, prelude, body, result):
     if result:
         if isinstance(self.value, bool):
@@ -177,43 +187,49 @@ def Value_transpile(self, tstate, prelude, body, result):
             result.string(str(self.value))
     return True
 
-def FuncDef_transpile(self, tstate, prelude, body, result):
-    if self.func.return_type:
-        self.func.return_type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-    else:
-        body.string('void')
-    body.string(self.func.name)
-    body.string('(')
-    for idx, arg in enumerate(self.func.args):
-        if idx != 0:
-            body.string(',')
-        arg.var.type.transpile(tstate, prelude, prelude, body)
-        body.string(arg.var.name)
-    body.string(') {')
-    with tstate.set_flags(in_function=True):
-        if self.func.return_type:
-            bodypre = body.inserter(True)
-            bodybody = body.inserter(True)
-            bodyresult = body.inserter(True)
-            bodyresult.string('return')
-            self.func.body.transpile(tstate, bodypre, bodybody, bodyresult)
-            bodyresult.line(';')
-        else:
-            self.func.body.transpile(tstate, body.inserter(True), body.inserter(True), None)
-    body.line('};')
+@patch
+def Function_transpile(self, tstate, prelude, body, result):
+    if not hasattr(self, 'transname'):
+        setattr(self, 'transname', tstate.unique_name('function'))
+        
+        prelude, body = prelude.inserter(), prelude.inserter()
+        self.return_type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        body.string(self.transname)
+        body.string('(')
+        for idx, arg in enumerate(self.args):
+            if idx != 0:
+                body.string(',')
+            arg.type.transpile(tstate, prelude, prelude, body)
+            body.string(arg.var.name)
+        body.string(') {')
+        with tstate.set_flags(in_function=True):
+            if not model.is_unit_type(self.return_type):
+                bodypre = body.inserter(True)
+                bodybody = body.inserter(True)
+                bodyresult = body.inserter(True)
+                bodyresult.string('return')
+                self.body.transpile(tstate, bodypre, bodybody, bodyresult)
+                bodyresult.line(';')
+            else:
+                self.body.transpile(tstate, body.inserter(True), body.inserter(True), None)
+        body.line('};')
+        
+    result.string(self.transname)
+    
 
-def Var_transpile(self, tstate, prelude, body, result):
-    if inline(self, tstate, prelude, body, result):
-        return True
-    result.string(self.name)
+@patch
+def VarRef_transpile(self, tstate, prelude, body, result):
+    result.string(self.var_def.name)
 
+@patch
 def While_transpile(self, tstate, prelude, body, result):
     body.string('while (')
     self.condition.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     body.string(')')
     with tstate.set_flags(in_loop=True):
         self.body.transpile(tstate, prelude, body, None)
-    
+
+@patch
 def If_transpile(self, tstate, prelude, body, result):
     if inline(self, tstate, prelude, body, result):
         return True
@@ -253,6 +269,7 @@ def If_transpile(self, tstate, prelude, body, result):
     if outvar:
         result.string(outvar)
 
+@patch
 def Call_transpile(self, tstate, prelude, body, result):
     if inline(self, tstate, prelude, body, result):
         return True
@@ -268,30 +285,12 @@ def Call_transpile(self, tstate, prelude, body, result):
     if result == body:
         result.line(';')
 
+@patch
 def Assignment_transpile(self, tstate, prelude, body, result):
     body.string(self.destination.name)
     body.string('=')
     self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     body.line(';')
-
-def Function_transpile(self, tstate, prelude, body, result):
-    result.string(self.name)
-    
-model.Node.transpile = Node_transpile
-model.Block.transpile = Block_transpile
-model.VarDef.transpile = VarDef_transpile
-model.Type.transpile = Type_transpile
-model.Tuple.transpile = Tuple_transpile
-model.TypeDef.transpile = TypeDef_transpile
-model.Value.transpile = Value_transpile
-model.Program.transpile = Program_transpile
-model.FuncDef.transpile = FuncDef_transpile
-model.Var.transpile = Var_transpile
-model.While.transpile = While_transpile
-model.If.transpile = If_transpile
-model.Call.transpile = Call_transpile
-model.Assignment.transpile = Assignment_transpile
-model.Function.transpile = Function_transpile
 
 def transpile_model(m):
     tstate = State()
@@ -311,5 +310,5 @@ if __name__ == '__main__':
     
     content = open(args.path).read()
 
-    m = interpreter.build_model(content)
+    m = model.build_model(content)
     print transpile_model(m)

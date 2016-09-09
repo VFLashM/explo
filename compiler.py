@@ -1,5 +1,5 @@
 #!env python2.7
-import interpreter
+import model
 import transpiler
 import tempfile
 import subprocess
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     content = open(args.path).read()
     prefix = os.path.basename(args.path)
 
-    m = interpreter.build_model(content)
+    m = model.build_model(content)
     transpiled = transpiler.transpile_model(m)
     if args.debug:
         for idx, line in enumerate(transpiled.splitlines()):
