@@ -48,10 +48,9 @@ class NoSuchAttribute(ModelError):
         self.obj = obj
         self.attr = attr
 
-class NotInitialized(error.InterpreterError):
+class NotInitialized(ModelError):
     def __init__(self, name):
-        error.InterpreterError.__init__(self, 'not initialized: %s' % name)
-        
+        ModelError.__init__(self, 'not initialized: %s' % name, None)
 
 class Node(object):
     def __init__(self, ast_node=None):
@@ -438,7 +437,7 @@ class Context(RuntimeContext):
 
     def create_expression(self, ast_node):
         res = self._create_expression(ast_node)
-        if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef, Value)):
+        if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, Value)):
             value = res.execute(self)
             return PrecompiledExpression(ast_node, value, res)
         else:
@@ -534,7 +533,10 @@ def build_model(code, output=sys.stdout):
 def run_model(m):
     #main = m.resolve_term('main', None)
     main = m.get_value('main')
-    res = main.call(m, [])
+    try:
+        res = main.call(m, [])
+    except NotInitialized as e:
+        raise error.InterpreterError(str(e))
     if res:
         return res.value
 
