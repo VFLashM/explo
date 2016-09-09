@@ -48,9 +48,12 @@ class Builtins(model.Context):
     def __init__(self, stdout=sys.stdout):
         model.Context.__init__(self, None)
 
+        self.add_term('Unit', BuiltinType('Unit'), None)
+        self.add_term('Void', BuiltinType('Void'), None)
+
         def abort(*args):
             raise error.InterpreterError('abort')
-        self.add_function('abort', [], None, abort, False)
+        self.add_function('abort', [], 'Void', abort, False)
 
         bool_type = BuiltinType('Bool')
         self.add_term('Bool', bool_type, None)

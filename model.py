@@ -50,6 +50,7 @@ class Node(object):
 
 class Builtin(Node):
     def __init__(self):
+        self.name = None
         Node.__init__(self, None)
 
 class BuiltinMetaType(Builtin):
@@ -73,6 +74,8 @@ def check_assignable_from(a, b, c):
         a = a.value
     if isinstance(b, PrecompiledExpression):
         b = b.value
+    if isinstance(a, Builtin) and a.name == 'Unit':
+        return True
     if a != b:
         raise TypeMismatch(a, b, c)
 
@@ -304,11 +307,8 @@ class Enum(Expression):
 class Function(Expression):
     def __init__(self, ast_node, context):
         Expression.__init__(self, ast_node)
-        
-        if ast_node.return_type:
-            self.return_type = context.resolve_type(ast_node.return_type)
-        else:
-            self.return_type = None
+
+        self.return_type = context.resolve_type(ast_node.return_type)
             
         while True:
             try:
@@ -348,10 +348,7 @@ class PrecompiledExpression(Node):
         Node.__init__(self, ast_node)
         self.value = value
         self.expr = expr
-        if value:
-            self.type = value.type
-        else:
-            self.type = None
+        self.type = expr.type
         self.runtime_depends = []
 
     def __str__(self):
@@ -425,7 +422,6 @@ class Context(RuntimeContext):
         res = self._create_expression(ast_node)
         if len(res.runtime_depends) == 0 and not isinstance(res, (Function, Builtin, VarRef, Value)):
             value = res.execute(self)
-            assert value or not res.type
             return PrecompiledExpression(ast_node, value, res)
         else:
             return res
@@ -440,6 +436,8 @@ class Context(RuntimeContext):
         return self.terms[name]
 
     def resolve_type(self, ast_node):
+        if ast_node is None:
+            return self.resolve_term('Unit', ast_node)
         expr = self.create_expression(ast_node)
         if len(expr.runtime_depends) > 0:
             raise NotCompileTime(expr)
@@ -464,15 +462,17 @@ class Block(Expression, Context):
         Expression.__init__(self, ast_node)
         self.runtime_depends = []
         self.statements = []
-        self.type = None
+        self.type = self.resolve_type(None)
         for st in ast_node.statements:
             self.add_statement(st)
 
     def add_statement(self, ast_node):
         if isinstance(ast_node, ast.Var):
             res = VarDef(ast_node, self)
+            self.type = self.resolve_type(None)
         elif isinstance(ast_node, ast.Assignment):
             res = Assignment(ast_node, self)
+            self.type = self.resolve_type(None)
         else:
             res = self.create_expression(ast_node)
             self.type = res.type
@@ -491,6 +491,7 @@ class Block(Expression, Context):
         return 'Block {\n%s\n}' % ('\n'.join(self._indent(str(st)) for st in self.statements))
 
     def execute(self, context):
+        res = None
         for st in self.statements:
             res = st.execute(context)
         return res
