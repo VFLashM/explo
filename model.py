@@ -101,7 +101,7 @@ class VarDef(Node):
         if ast_node.value:
             self.value = context.create_expression(ast_node.value)
             self.runtime_depends = list(self.value.runtime_depends)
-        elif self.readonly and not is_argument:
+        elif self.owner is None or (self.readonly and not is_argument):
             raise NoValue(ast_node)
         else:
             self.value = None
@@ -533,10 +533,7 @@ def build_model(code, output=sys.stdout):
 def run_model(m):
     #main = m.resolve_term('main', None)
     main = m.get_value('main')
-    try:
-        res = main.call(m, [])
-    except NotInitialized as e:
-        raise error.InterpreterError(str(e))
+    res = main.call(m, [])
     if res:
         return res.value
 

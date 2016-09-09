@@ -5,15 +5,14 @@ let full: Int = 5
 let notype = 6
 let unit = {}
 
-var vnoval: Int
+var vnoval: Int //<ModelError no value
 var vfull: Int = full
 var vnotype = notype
 var vunit = {}
 
-var vnoval: Int //<ModelError already defined
+var vfull: Int = full //<ModelError already defined
 
 fn main() {
-   iprint(vnoval) //<InterpreterError not initialized
    assert(ieq(full, 5))
    assert(ieq(notype, 6))
    assert(ieq(vfull, 5))
