@@ -31,6 +31,10 @@ class Undefined(ModelError):
         ModelError.__init__(self, 'undefined name: %s' % name, ast_node)
         self.name = name
 
+class NoValue(ModelError):
+    def __init__(self, ast_node):
+        ModelError.__init__(self, 'no value specified for readonly variable', ast_node)
+
 class FatalError(ModelError):
     pass
 
@@ -43,6 +47,11 @@ class NoSuchAttribute(ModelError):
         ModelError.__init__(self, 'no such attribute: %s' % attr, ast_node)
         self.obj = obj
         self.attr = attr
+
+class NotInitialized(error.InterpreterError):
+    def __init__(self, name):
+        error.InterpreterError.__init__(self, 'not initialized: %s' % name)
+        
 
 class Node(object):
     def __init__(self, ast_node=None):
@@ -80,7 +89,7 @@ def check_assignable_from(a, b, c):
         raise TypeMismatch(a, b, c)
 
 class VarDef(Node):
-    def __init__(self, ast_node, context):
+    def __init__(self, ast_node, context, is_argument=False):
         Node.__init__(self, ast_node)
         self.owner = context.owner
         self.readonly = ast_node.readonly
@@ -88,6 +97,8 @@ class VarDef(Node):
         if ast_node.value:
             self.value = context.create_expression(ast_node.value)
             self.runtime_depends = list(self.value.runtime_depends)
+        elif self.readonly and not is_argument:
+            raise NoValue(ast_node)
         else:
             self.value = None
             self.runtime_depends = []
@@ -108,9 +119,7 @@ class VarDef(Node):
         context.register_value(self.name)
         if self.value:
             value = self.value.execute(context)
-        else:
-            value = None
-        context.assign_value(self.name, value)
+            context.assign_value(self.name, value)
 
 class VarRef(Expression):
     def __init__(self, ast_node, var_def, context):
@@ -313,7 +322,7 @@ class Function(Expression):
         while True:
             try:
                 arg_context = Context(context, self)
-                self.args = [VarDef(arg, arg_context) for arg in ast_node.args]
+                self.args = [VarDef(arg, arg_context, True) for arg in ast_node.args]
                 for a in self.args:
                     a.runtime_depends = [a]
                 self.body = Block(ast_node.body, arg_context)
@@ -360,15 +369,16 @@ class PrecompiledExpression(Node):
 class RuntimeContext(object):
     def __init__(self, parent):
         self.parent = parent
+        self.names = set()
         self.values = {}
 
     def register_value(self, name):
-        if name in self.values:
+        if name in self.names:
             raise AlreadyDefined(name, None)
-        self.values[name] = None
+        self.names.add(name)
 
     def assign_value(self, name, value):
-        if name in self.values:
+        if name in self.names:
             self.values[name] = value
         elif self.parent:
             self.parent.assign_value(name, value)
@@ -376,8 +386,11 @@ class RuntimeContext(object):
             raise Undefined(name, None)
 
     def get_value(self, name):
-        if name in self.values:
-            return self.values[name]
+        if name in self.names:
+            if name in self.values:
+                return self.values[name]
+            else:
+                raise NotInitialized(name)
         elif self.parent:
             return self.parent.get_value(name)
         else:
