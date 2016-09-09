@@ -2,40 +2,40 @@ fn assert(c: Bool) { if not(c) { abort() } }
 
 fn test_if() {
    if ieq(1, 2) {
-      print(0)
+      iprint(0)
    }
    if true {
-      print(0)
+      iprint(0)
    }
    if true {}
 
    var i: Int = if true { 1 } else { 0 }
    
    if 1 {} //<ModelError type mismatch
-   if print(1) {} //<ModelError type mismatch
+   if iprint(1) {} //<ModelError type mismatch
    var i2: Int = if true { 1 } //<ModelError type mismatch
    var i3: Int = if true { 1 } else { true } //<ModelError type mismatch
 }
 
 fn test_if_else() {
    if ieq(1, 2) {
-     print(1)
+     iprint(1)
    } else {
-     print(0)
+     iprint(0)
    }
 }
 
 fn test_while() {
    while true {
-     print(1)
+     iprint(1)
    }
    while ieq(1, 2) {
-     print(2)
+     iprint(2)
    }
-   while true {}
+   //while true {}
 
    while 1 {} //<ModelError type mismatch
-   while print(1) {} //<ModelError type mismatch
+   while iprint(1) {} //<ModelError type mismatch
 }
 
 fn main() {

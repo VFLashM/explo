@@ -1,6 +1,6 @@
 fn assert(c: Bool) { if not(c) { abort() } }
 
-let noval: Int //<ModelError not initialized
+let noval: Int //<ModelError no value
 let full: Int = 5
 let notype = 6
 let unit = {}
@@ -10,10 +10,10 @@ var vfull: Int = full
 var vnotype = notype
 var vunit = {}
 
-var noval: Int //<ModelError already defined
+var vnoval: Int //<ModelError already defined
 
 fn main() {
-   print(vnoval) //<InterpreterError not initialized
+   iprint(vnoval) //<InterpreterError not initialized
    assert(ieq(full, 5))
    assert(ieq(notype, 6))
    assert(ieq(vfull, 5))

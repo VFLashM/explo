@@ -38,8 +38,8 @@ var beqv: Bool = beq(true, false)
 var bneqv: Bool = bneq(true, false)
 
 fn test_print() {
-   print(1)
-   print(true)
+   iprint(1)
+   bprint(true)
 }
 
 fn main() {

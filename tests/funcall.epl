@@ -17,15 +17,15 @@ fn assign(a: Bool) -> Bool {
 }
 
 fn print_int(val: Int) {
-   print(val)
+   iprint(val)
 }
 
 fn print_one() {
    print_int(1)
 }
 
-fn voidarg(a: ()) {
-   print(3)
+fn unitarg(a: Unit) {
+   iprint(3)
    a
 }
 
@@ -43,7 +43,7 @@ fn main() {
    assert(not(assign(false)))
    print_int(4) //<Output 4
    print_one() //<Output 1
-   voidarg(voidarg(voidarg(print_one()))) //<Output 1
+   unitarg(unitarg(unitarg(print_one()))) //<Output 1
    //<Output 3
    //<Output 3
    //<Output 3

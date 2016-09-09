@@ -9,5 +9,5 @@ fn ct(a: Int) -> Int {
 let res = ct(2)
 
 fn main() {
-   assert(ieq(3, res))
+   assert(ieq(2, res))
 }

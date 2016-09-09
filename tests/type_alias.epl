@@ -1,7 +1,7 @@
 //!no_run
-type NewInt = Int
-type NewInt = Bool //<ModelError already defined
-type Int = Bool //<ModelError already defined
+let NewInt = Int
+let NewInt = Bool //<ModelError already defined
+let Int = Bool //<ModelError already defined
 
 let i: NewInt = 4
 let j: Int = 5
