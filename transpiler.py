@@ -4,10 +4,6 @@ import contextlib
 import model
 import error
 
-class InlinerError(error.CompileTimeError):
-    def __init__(self, cause):
-        self.cause = cause
-
 class Output(object):
     def __init__(self, indent=False):
         self.indent = indent
@@ -136,7 +132,7 @@ def Block_transpile(self, tstate, prelude, body, result):
 def Program_transpile(self, tstate, prelude, body, result):
     prelude.line('#include "builtins.h"')
     for st in self.statements:
-        st.transpile(tstate, prelude, body, None)
+        st.transpile(tstate, body.inserter(), body.inserter(), None)
 
 @patch
 def FuncType_transpile(self, tstate, prelude, body, result):
@@ -161,13 +157,13 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     self.type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     if self.name == 'main' and self.owner == None:
         setattr(self, 'transname', tstate.unique_name('main'))
+        body.string(self.transname)
         tstate.main = self
     else:
-        setattr(self, 'transname', self.name)
-    body.string(self.transname)
+        body.string(self.name)
     if self.value:
         body.string('=')
-        inlined = self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
+        self.value.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
     body.line(';')
 
 @patch
@@ -206,7 +202,7 @@ def Function_transpile(self, tstate, prelude, body, result):
             if idx != 0:
                 body.string(',')
             arg.type.transpile(tstate, prelude, prelude, body)
-            body.string(arg.var.name)
+            body.string(arg.name)
         body.string(') {')
         with tstate.set_flags(in_function=True):
             if not model.is_unit_type(self.return_type):
@@ -225,7 +221,10 @@ def Function_transpile(self, tstate, prelude, body, result):
 
 @patch
 def VarRef_transpile(self, tstate, prelude, body, result):
-    result.string(self.var_def.transname)
+    if hasattr(self.var_def, 'transname'):
+        result.string(self.var_def.transname)
+    else:
+        result.string(self.var_def.name)
 
 @patch
 def While_transpile(self, tstate, prelude, body, result):
@@ -237,8 +236,6 @@ def While_transpile(self, tstate, prelude, body, result):
 
 @patch
 def If_transpile(self, tstate, prelude, body, result):
-    if inline(self, tstate, prelude, body, result):
-        return True
     if result and self.type:
         outvar = tstate.temp_var('if_result', self.type, prelude)
     else:
@@ -277,8 +274,6 @@ def If_transpile(self, tstate, prelude, body, result):
 
 @patch
 def Call_transpile(self, tstate, prelude, body, result):
-    if inline(self, tstate, prelude, body, result):
-        return True
     if result is None:
         result = body
     self.callee.transpile(tstate, prelude.inserter(), prelude.inserter(), result)
