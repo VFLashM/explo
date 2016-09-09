@@ -9,5 +9,5 @@ enum InvalidNumbers { 1 } //<ParserError
 enum Single { some, other } //<ModelError already defined
 enum Int { some, other } //<ModelError already defined
 
-var i: Single = value
-var j = two
+var i: Single = Single.value
+var j = WithComma.two
