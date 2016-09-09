@@ -5,7 +5,6 @@ import model
 import error
 import compiler
 import parse
-#import transpiler
 import traceback
 
 logger = logging.getLogger('test')
