@@ -38,6 +38,12 @@ class NotCompileTime(ModelError):
     def __init__(self, expr):
         ModelError.__init__(self, 'not compile time:\n%s\ndepends: %s' % (expr, map(str, expr.runtime_depends)), expr.ast_node)
 
+class NoSuchAttribute(ModelError):
+    def __init__(self, obj, attr, ast_node):
+        ModelError.__init__(self, 'no such attribute: %s' % attr, ast_node)
+        self.obj = obj
+        self.attr = attr
+
 class Node(object):
     def __init__(self, ast_node=None):
         self.ast_node = ast_node
@@ -46,6 +52,16 @@ class Builtin(Node):
     def __init__(self):
         Node.__init__(self, None)
 
+class BuiltinMetaType(Builtin):
+    type = None
+    runtime_depends = []
+    attr_types = {}
+    def __str__(self):
+        return 'BuiltinMetaType'
+    
+BUILTIN_META_TYPE = BuiltinMetaType()
+BUILTIN_META_TYPE.type = BUILTIN_META_TYPE
+
 class Expression(Node):
     def __init__(self, ast_node):
         Node.__init__(self, ast_node)
@@ -53,8 +69,9 @@ class Expression(Node):
         self.type = None
 
 def check_assignable_from(a, b, c):
-    if isinstance(a, PrecompiledExpression) and isinstance(b, PrecompiledExpression):
+    if isinstance(a, PrecompiledExpression):
         a = a.value
+    if isinstance(b, PrecompiledExpression):
         b = b.value
     if a != b:
         raise TypeMismatch(a, b, c)
@@ -158,6 +175,31 @@ class Call(Expression):
         args = [arg.execute(context) for arg in self.args]
         return callee.call(context, args)
 
+class AttributeAccess(Expression):
+    def __init__(self, ast_node, context):
+        Expression.__init__(self, ast_node)
+        self.obj = context.create_expression(ast_node.obj)
+        self.attribute = ast_node.attribute
+        if self.attribute in self.obj.type.attr_types:
+            self.type = self.obj.type.attr_types[self.attribute]
+        elif len(self.obj.runtime_depends) == 0:
+            obj = self.obj.execute(context)
+            if self.attribute in obj.attr_types:
+                self.type = obj.attr_types[self.attribute]
+            else:
+                raise NoSuchAttribute(self.obj.type, self.attribute, ast_node)
+        else:
+            raise NoSuchAttribute(self.obj.type, self.attribute, ast_node)
+            
+        self.runtime_depends = list(self.obj.runtime_depends)
+
+    def __str__(self):
+        return 'AttributeAccess(%s, %s)' % (self.obj, self.attribute)
+
+    def execute(self, context):
+        obj = self.obj.execute(context)
+        return obj.get_attr(context, self.attribute)
+
 class Assignment(Node):
     def __init__(self, ast_node, context):
         Node.__init__(self, ast_node)
@@ -239,6 +281,25 @@ class While(Expression):
     def execute(self, context):
         while self.condition.execute(context).value:
             self.body.execute(context)
+
+class Enum(Expression):
+    def __init__(self, ast_node, context):
+        self.values = ast_node.values
+        self.runtime_depends = []
+        self.type = BUILTIN_META_TYPE
+        self.attr_types = {}
+        for value in self.values:
+            self.attr_types[value] = self
+
+    def execute(self, context):
+        return self
+
+    def get_attr(self, context, name):
+        assert name in self.values
+        return Value(name, self, None)
+
+    def __str__(self):
+        return 'Enum(%s)' % ', '.join(self.values)
 
 class Function(Expression):
     def __init__(self, ast_node, context):
@@ -335,11 +396,15 @@ class Context(RuntimeContext):
 
     def _create_expression(self, ast_node):
         if isinstance(ast_node, ast.Term):
-            var_def = self.resolve_term(ast_node.name, ast_node)
-            if isinstance(var_def, VarDef):
-                return VarRef(ast_node, var_def, self)
+            term = self.resolve_term(ast_node.name, ast_node)
+            if isinstance(term, VarDef):
+                return VarRef(ast_node, term, self)
             else:
-                return var_def
+                return term
+        elif isinstance(ast_node, ast.Enum):
+            return Enum(ast_node, self)
+        elif isinstance(ast_node, ast.AttributeAccess):
+            return AttributeAccess(ast_node, self)
         elif isinstance(ast_node, ast.Func):
             return Function(ast_node, self)
         elif isinstance(ast_node, ast.Call):

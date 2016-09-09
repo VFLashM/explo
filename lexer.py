@@ -22,6 +22,7 @@ tokens = (
     'RBRACE',
     'LESS',
     'GREATER',
+    'DOT',
     'COMMA',
     'COLON',
     'EQ',
@@ -34,6 +35,7 @@ t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 t_LBRACE = r'\{'
 t_RBRACE  = r'\}'
+t_DOT = r'\.'
 t_COMMA = r'\,'
 t_COLON = r'\:'
 t_LESS  = r'\<'

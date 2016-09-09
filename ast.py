@@ -48,6 +48,14 @@ class Call(Expression):
         args = ', '.join(map(str, self.args))
         return 'Call(%s, [%s])' % (self.callee, args)
 
+class AttributeAccess(Expression):
+    def __init__(self, obj, attribute):
+        self.obj = obj
+        self.attribute = attribute
+
+    def __str__(self):
+        return 'AttributeAccess(%s, %s)' % (self.obj, self.attribute)
+
 class Assignment(Expression):
     def __init__(self, destination, value):
         self.destination = destination
@@ -111,3 +119,10 @@ class Block(Expression):
 class Program(Block):
     def __str__(self):
         return 'Program %s' % Block.__str__(self)
+
+class Enum(Expression):
+    def __init__(self, values):
+        self.values = values
+        
+    def __str__(self):
+        return 'Enum(%s)' % ', '.join(self.values)

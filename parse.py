@@ -102,6 +102,18 @@ def p_expr_fn(p):
         p[0] = ast.Func(p[3], None, p[5])
     add_srcmap(p, 2)
 
+def p_term_list(p):
+    '''term_list :
+                 | ID
+                 | term_list COMMA ID'''
+    _process_list(p, sep=1)
+
+def p_expr_enum(p):
+    '''expr : ENUM LBRACE term_list RBRACE
+            | ENUM LBRACE term_list COMMA RBRACE'''
+    p[0] = ast.Enum(p[3])
+    add_srcmap(p, 1)
+
 def p_expr_term(p):
     '''expr : ID'''
     p[0] = ast.Term(p[1])
@@ -120,6 +132,11 @@ def p_expr_float(p):
 def p_expr_block(p):
     '''expr : block'''
     p[0] = p[1]
+    add_srcmap(p, 1)
+
+def p_expr_attribute_access(p):
+    '''expr : expr DOT ID'''
+    p[0] = ast.AttributeAccess(p[1], p[3])
     add_srcmap(p, 1)
 
 def p_expr_call(p):

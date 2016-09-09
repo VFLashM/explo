@@ -3,19 +3,10 @@ import ast
 import model
 import error
 
-class BuiltinMetaType(model.Builtin):
-    type = None
-    runtime_depends = []
-    def __str__(self):
-        return 'BuiltinMetaType'
-    
-BUILTIN_META_TYPE = BuiltinMetaType()
-BUILTIN_META_TYPE.type = BUILTIN_META_TYPE
-
 class BuiltinType(model.Builtin):
     def __init__(self, name):
         self.name = name
-        self.type = BUILTIN_META_TYPE
+        self.type = model.BUILTIN_META_TYPE
         self.runtime_depends = []
         
     def __str__(self):
