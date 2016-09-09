@@ -3,7 +3,7 @@ import os
 import logging
 import model
 import error
-#import compiler
+import compiler
 import parse
 #import transpiler
 import traceback
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     for test_file in test_set:
         if not test_file.check(args.verbose,
                                args.no_interpreter or args.no_run,
-                               True): #args.no_compiler or args.no_run):
+                               args.no_compiler or args.no_run):
             failed += 1
     if failed:
         print '%s tests failed' % failed
