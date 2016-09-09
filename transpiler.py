@@ -4,6 +4,8 @@ import contextlib
 import model
 import error
 
+RESERVED_NAMES = ('main', 'unit', 'false', 'true')
+
 class Output(object):
     def __init__(self, indent=False):
         self.indent = indent
@@ -99,7 +101,7 @@ def Builtin_transpile(self, tstate, prelude, body, output):
 def PrecompiledExpression_transpile(self, tstate, prelude, body, output):
     if self.value:
         self.value.transpile(tstate, prelude, body, output)
-    else:
+    elif output:
         output.string('unit')
     
 @patch
@@ -162,10 +164,11 @@ def VarDef_transpile(self, tstate, prelude, body, result):
     if self.readonly:
         body.string('const')
     self.type.transpile(tstate, prelude.inserter(), prelude.inserter(), body)
-    if self.name == 'main' and self.owner == None:
-        setattr(self, 'transname', tstate.unique_name('main'))
+    if self.name in RESERVED_NAMES and self.owner == None:
+        setattr(self, 'transname', tstate.unique_name(self.name))
         body.string(self.transname)
-        tstate.main = self
+        if self.name == 'main':
+            tstate.main = self
     else:
         body.string(self.name)
     if self.value:
@@ -228,10 +231,11 @@ def Function_transpile(self, tstate, prelude, body, result):
 
 @patch
 def VarRef_transpile(self, tstate, prelude, body, result):
-    if hasattr(self.var_def, 'transname'):
-        result.string(self.var_def.transname)
-    else:
-        result.string(self.var_def.name)
+    if result:
+        if hasattr(self.var_def, 'transname'):
+            result.string(self.var_def.transname)
+        else:
+            result.string(self.var_def.name)
 
 @patch
 def While_transpile(self, tstate, prelude, body, result):
