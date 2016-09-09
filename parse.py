@@ -114,6 +114,13 @@ def p_expr_enum(p):
     p[0] = ast.Enum(p[3])
     add_srcmap(p, 1)
 
+def p_def_enum(p):
+    '''def : ENUM ID LBRACE term_list RBRACE
+           | ENUM ID LBRACE term_list COMMA RBRACE'''
+    e = ast.Enum(p[4])
+    p[0] = ast.Var(p[2], None, True, e)
+    add_srcmap(p, 2)
+
 def p_expr_term(p):
     '''expr : ID'''
     p[0] = ast.Term(p[1])
