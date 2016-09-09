@@ -96,6 +96,13 @@ def Builtin_transpile(self, tstate, prelude, body, output):
     output.string(self.name)
 
 @patch
+def PrecompiledExpression_transpile(self, tstate, prelude, body, output):
+    if self.value:
+        self.value.transpile(tstate, prelude, body, output)
+    else:
+        output.string('unit')
+    
+@patch
 def Block_transpile(self, tstate, prelude, body, result):
     if not self.statements:
         if result:

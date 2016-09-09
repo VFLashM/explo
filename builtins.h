@@ -28,7 +28,8 @@ Bool geq(Int a, Int b) { return a >= b; }
 Bool lt(Int a, Int b) { return a < b; }
 Bool leq(Int a, Int b) { return a <= b; }
 
-void print(Int a) { printf("%d\n", a); }
+void iprint(Int a) { printf("%d\n", a); }
+void bprint(Bool a) { printf("%d\n", a); }
 void abort() {
     fprintf(stderr, "abort");
 #ifdef _WIN32

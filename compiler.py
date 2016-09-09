@@ -28,7 +28,8 @@ def run_c(src, prefix=''):
             raise error.BinaryExecutionError((p.returncode, out, err))
         return p.returncode, out, err
     finally:
-        os.remove(binary)
+        if os.path.exists(binary):
+            os.remove(binary)
 
 def run_model(m, prefix=''):
     transpiled = transpiler.transpile_model(m)
